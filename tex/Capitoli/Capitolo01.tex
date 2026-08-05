@@ -97,3 +97,23 @@ Per il nostro scopo sono rilevanti:
             \item \texttt{n}, non viene stampato nulla, però il numero di caratteri scritti fino a quel momento viene memorizzato nella locazione di memoria puntata dall'argomento corrispondente
         \end{itemize}
 \end{itemize}
+
+
+\section{La calling convention x86\_64 e il confronto con x86}\label{sec:callconv}
+La vulnerabilità \emph{format string}, la vediamo in particolare per l'architettura x86\_64, nota anche come AMD64. Ci interessano le convenzioni utilizzate da tale architettura durante la chiamata di funzione, in particolare dove vengono memorizzati gli argomenti passati alla funzione (ci servirà quando andremo a sfruttare la vulnerabilità).
+Facciamo poi anche un rapido confronto con l'architettura x86 per mostrare l'impatto che il cambiamento di architettura può avere sulla tecnica di sfruttamento.
+
+\subsection{System V AMD64 ABI: registri per il passaggio dei parametri}\label{subsec:x86_64}
+\begin{defn}[ABI]\label{def:abi}
+Un'\textbf{ABI} (\emph{Application Binary Interface}) definisce in che modo i diversi componenti di un codice binario possano interfacciarsi su un determinato sistema operativo e una determinata architettura \cite{silberschatz2019}.
+\end{defn}
+
+Tra i molti dettagli di basso livello specificati da un'ABI --- formato dei file oggetto, layout dei dati e altri --- quello che riguarda più da vicino la vulnerabilità trattata in questa tesi è la \emph{calling convention}, ovvero l'insieme di regole con cui il chiamante dispone gli argomenti di una funzione affinché il chiamato possa recuperarli correttamente. Per la piattaforma di riferimento (Linux, x86\_64), queste regole sono specificate dalla System V AMD64 ABI, che decide la collocazione di ciascun argomento --- in un registro o sullo stack --- sulla base di una classificazione.
+
+Gli argomenti delle funzioni vengono suddivisi in diverse categorie, mappate sulle specifiche famiglie di registri dell'architettura AMD64. I dati rilevanti ai fini della trattazione della nostra vulnerabilità appartengono alla classe \emph{INTEGER}, costituita dai tipi interi che possono essere contenuti all'interno di uno dei registri di uso generale (\emph{general purpose registers}).
+
+I tipi base (con segno e senza segno) appartenenti alla classe \emph{INTEGER} sono: \texttt{\_Bool}, \texttt{char}, \texttt{short}, \texttt{int}, \texttt{long}, \texttt{long long} e puntatori.
+La dimensione di ciascun argomento viene arrotondata per eccesso a otto byte. Di conseguenza, lo stack risulta sempre allineato a otto byte \cite{psabi2025}.
+
+Per gli argomenti di classe \emph{INTEGER}, il passaggio avviene assegnandoli da sinistra verso destra al primo registro disponibile nella sequenza: \texttt{\%rdi}, \texttt{\%rsi}, \texttt{\%rdx}, \texttt{\%rcx}, \texttt{\%r8}, \texttt{\%r9}.
+Completata questa assegnazione ai registri, gli argomenti rimanenti (destinati alla memoria) vengono inseriti nello stack in ordine inverso, ovvero da destra verso sinistra \cite{psabi2025}.
