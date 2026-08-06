@@ -6,6 +6,7 @@ In questo capitolo vengono affrontate le conoscenze tecniche che supportano la c
 \begin{defn}[Funzione variadica]\label{def:funzione-variadica}
 Nel linguaggio C, una \textbf{funzione variadica} è una funzione progettata per accettare un numero variabile di argomenti, potenzialmente di tipi diversi \cite{kr1988}.
 \end{defn}
+
 Una delle funzioni variadiche più note è \texttt{printf}, dichiarata nell'\emph{header} \texttt{<stdio.h>} della libreria standard del linguaggio C \cite{man3printf}, come mostrato nel Codice~\ref{lst:printf_decl}.
 \begin{lstlisting}[
     language=C,
@@ -108,9 +109,9 @@ Facciamo poi anche un rapido confronto con l'architettura x86 per mostrare l'imp
 Un'\textbf{ABI} (\emph{Application Binary Interface}) definisce in che modo i diversi componenti di un codice binario possano interfacciarsi su un determinato sistema operativo e una determinata architettura \cite{silberschatz2019}.
 \end{defn}
 
-Tra i molti dettagli di basso livello specificati da un'ABI --- formato dei file oggetto, layout dei dati e altri --- quello che riguarda più da vicino la vulnerabilità trattata in questa tesi è la \emph{calling convention}, ovvero l'insieme di regole con cui il chiamante dispone gli argomenti di una funzione affinché il chiamato possa recuperarli correttamente. Per la piattaforma di riferimento (Linux, x86\_64), queste regole sono specificate dalla System V AMD64 ABI, che decide la collocazione di ciascun argomento --- in un registro o sullo stack --- sulla base di una classificazione.
+Tra i molti dettagli di basso livello specificati da un'ABI, quello che riguarda più da vicino la vulnerabilità trattata in questa tesi è la \emph{calling convention}, ovvero l'insieme di regole con cui il chiamante dispone gli argomenti di una funzione affinché il chiamato possa recuperarli correttamente. Per la piattaforma di riferimento (Linux, x86\_64), queste regole sono specificate dalla System V AMD64 ABI, che decide la collocazione di ciascun argomento --- in un registro o sullo stack --- sulla base di una classificazione.
 
-Gli argomenti delle funzioni vengono suddivisi in diverse categorie, mappate sulle specifiche famiglie di registri dell'architettura AMD64. I dati rilevanti ai fini della trattazione della nostra vulnerabilità appartengono alla classe \emph{INTEGER}, costituita dai tipi interi che possono essere contenuti all'interno di uno dei registri di uso generale (\emph{general purpose registers}).
+Gli argomenti delle funzioni vengono suddivisi in diverse categorie, mappate sulle specifiche famiglie di registri dell'architettura AMD64. Quelli rilevanti ai fini della trattazione della nostra vulnerabilità appartengono alla classe \emph{INTEGER}, costituita dai tipi interi che possono essere contenuti all'interno di uno dei registri di uso generale (\emph{general purpose registers}).
 
 I tipi base (con segno e senza segno) appartenenti alla classe \emph{INTEGER} sono: \texttt{\_Bool}, \texttt{char}, \texttt{short}, \texttt{int}, \texttt{long}, \texttt{long long} e puntatori.
 La dimensione di ciascun argomento viene arrotondata per eccesso a otto byte. Di conseguenza, lo stack risulta sempre allineato a otto byte \cite{psabi2025}.
