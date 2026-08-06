@@ -115,5 +115,25 @@ Gli argomenti delle funzioni vengono suddivisi in diverse categorie, mappate sul
 I tipi base (con segno e senza segno) appartenenti alla classe \emph{INTEGER} sono: \texttt{\_Bool}, \texttt{char}, \texttt{short}, \texttt{int}, \texttt{long}, \texttt{long long} e puntatori.
 La dimensione di ciascun argomento viene arrotondata per eccesso a otto byte. Di conseguenza, lo stack risulta sempre allineato a otto byte \cite{psabi2025}.
 
-Per gli argomenti di classe \emph{INTEGER}, il passaggio avviene assegnandoli da sinistra verso destra al primo registro disponibile nella sequenza: \texttt{\%rdi}, \texttt{\%rsi}, \texttt{\%rdx}, \texttt{\%rcx}, \texttt{\%r8}, \texttt{\%r9}.
+Per gli argomenti di classe \emph{INTEGER}, il passaggio avviene assegnandoli da sinistra verso destra al primo registro disponibile nella sequenza: \texttt{\%rdi}, \texttt{\%rsi}, \texttt{\%rdx}, \texttt{\%rcx}, \texttt{\%r8}, \texttt{\%r9} (Tabella~\ref{tab:registri_integer}).
 Completata questa assegnazione ai registri, gli argomenti rimanenti (destinati alla memoria) vengono inseriti nello stack in ordine inverso, ovvero da destra verso sinistra \cite{psabi2025}.
+
+\begin{table}[ht]
+    \centering
+    \caption{Registro assegnato a ciascuna posizione per gli argomenti di classe \emph{INTEGER}}
+    \label{tab:registri_integer}
+    \begin{tabular}{cc}
+        \toprule
+        Posizione argomento & Registro \\
+        \midrule
+        1 & \texttt{\%rdi} \\
+        2 & \texttt{\%rsi} \\
+        3 & \texttt{\%rdx} \\
+        4 & \texttt{\%rcx} \\
+        5 & \texttt{\%r8}  \\
+        6 & \texttt{\%r9}  \\
+        \midrule
+        $\geq 7$ & stack \\
+        \bottomrule
+    \end{tabular}
+\end{table}
