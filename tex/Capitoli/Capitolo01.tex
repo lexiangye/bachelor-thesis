@@ -138,3 +138,88 @@ Completata questa assegnazione ai registri, gli argomenti rimanenti (destinati a
         \bottomrule
     \end{tabular}
 \end{table}
+
+\subsection{Il caso delle funzioni variadiche}\label{subsec:funvar_cc}
+Le funzioni standard, a parametri fissi, applicano la \emph{calling convention} x86\_64 senza difficoltà, poiché conoscono in anticipo numero e tipo degli argomenti che vengono loro passati, e sanno dunque già dove reperirli.
+
+Le funzioni variadiche, invece, non sanno in anticipo quanti argomenti riceveranno, né se si troveranno nei registri o sullo stack.
+Come visto in \ref{sec:funcvar_format}, le funzioni variadiche gestiscono gli argomenti aggiuntivi tramite l'\emph{header} \texttt{<stdarg.h>}, come se fossero una lista. Però non abbiamo specificato l'implementazione di questa lista, che varia da architettura a architettura poiché ci sono convenzioni differenti da rispettare. Vediamo dunque come \texttt{<stdarg.h>} sia implementato concretamente sull'architettura x86\_64.
+
+In x86\_64, i primi argomenti interi vengono passati nei sei registri nella Tabella~\ref{tab:registri_integer}. Il problema è che \texttt{<stdarg.h>} usa dei puntatori strutturati per accedere agli argomenti e non possiamo accedere tramite puntatori a dei registri come invece facciamo per gli argomenti nello stack.
+La soluzione è stata quella di mettere nel prologo delle funzioni variadiche del codice che vada a salvare il contenuto dei registri usati per il passaggio degli argomenti in un'area di memoria \ref{def:reg_save_area}.
+
+\begin{defn}[Register Save Area]\label{def:reg_save_area}
+    La \textbf{Register Save Area} è un'area di memoria a dimensione fissa (176 byte), allocata nello \emph{stack frame} di una funzione variadica che invoca \texttt{va\_start}.
+    Ogni registro usato per il passaggio dei parametri vi occupa un offset fisso (Figura~\ref{tab:register_save_area}), così che \texttt{va\_arg} possa accedere agli argomenti arrivati nei registri con la stessa aritmetica dei puntatori usata per quelli sullo stack.
+\end{defn}
+
+\begin{table}[ht]
+    \centering
+    \caption{Offset dei registri argomento nella \emph{register save area}}
+    \label{tab:register_save_area}
+    \begin{tabular}{cc}
+        \toprule
+        Registro & Offset (byte) \\
+        \midrule
+        \texttt{\%rdi} & 0 \\
+        \texttt{\%rsi} & 8 \\
+        \texttt{\%rdx} & 16 \\
+        \texttt{\%rcx} & 24 \\
+        \texttt{\%r8}  & 32 \\
+        \texttt{\%r9}  & 40 \\
+        \midrule
+        \texttt{\%xmm0--\%xmm7} & 48--175 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Devono essere salvati solo i registri che potrebbero essere utilizzati per passare gli argomenti. 
+Una funzione variadica chiamata non sa quanti registri verranno popolati \todo{nota a piè pagina per i registri vettoriali e \%al che fa limite superiore}, di conseguenza, per non perdere potenziali dati validi, il prologo è obbligato a salvare sempre tutti e 6 i registri interi destinati al passaggio dei parametri all'interno della register save area sullo stack.
+
+Il tipo \texttt{va\_list} (Codice~\ref{lst:va_list}) è un array di un solo elemento di tipo \texttt{struct}, contenente le informazioni necessarie per permettere alla macro \texttt{va\_arg} di estrarre l'argomento successivo correttamente. È compito della macro \texttt{va\_start} di inizializzare questa \texttt{struct}.
+
+\begin{lstlisting}[
+    language=C,
+    numbers=none,
+    gobble=4,
+    caption={\texttt{va\_list} type declaration},
+    label={lst:va_list}
+]
+    typedef struct {
+        unsigned int gp_offset;
+        unsigned int fp_offset;
+        void *overflow_arg_area;
+        void *reg_save_area;
+    } va_list[1];
+\end{lstlisting}
+
+Vediamo le componenti di \texttt{va\_list}:
+\begin{itemize}
+    \item \texttt{reg\_save\_area}: puntatore all'inizio della \emph{register save area}.
+
+    \item \texttt{gp\_offset}: contiene l'offset in byte, a partire da \texttt{reg\_save\_area}, del punto in cui è salvato il successivo registro \emph{general-purpose} disponibile. Nel caso in cui tutti i registri di argomento siano esauriti, viene impostato al valore 48 ($6 \times 8$).
+
+    \item \texttt{fp\_offset}: contiene l'offset in byte, a partire da \texttt{reg\_save\_area}, del punto in cui è salvato il successivo registro \emph{floating-point} disponibile. Nel caso in cui tutti i registri di argomento siano esauriti, viene impostato al valore 176 ($6 \times 8 + 8 \times 16$).
+
+    \item \texttt{overflow\_arg\_area}: puntatore nello stack "vero", fuori dalla register save area: punta al primo argomento passato lì (se esiste) e avanza a ogni lettura successiva. È dove \texttt{va\_arg} finisce per leggere una volta che \texttt{gp\_offset} o \texttt{fp\_offset} hanno raggiunto il loro valore massimo.
+\end{itemize}
+
+Come detto più volte, la macro \texttt{va\_arg} ci permette di estrarre gli argomenti aggiuntivi di una funzione variadica correttamente.
+A ogni chiamata di \texttt{va\_arg(ap, type)} (ap è di tipo \texttt{va\_list}) controlla se \texttt{type} è idoneo a essere passato tramite registri. In caso
+\begin{itemize}
+    \item \emph{positivo}, viene calcolato quanti registri sono necessari per contenere \texttt{type} e se i registri
+    \begin{itemize}
+        \item \emph{sono disponibili}, l'argomento viene estratto dai relativi registri in base agli offset correnti.
+        \item \emph{non sono disponibili}, l'argomento viene estratto dallo stack, in base agli offset correnti
+    \end{itemize}
+
+    \item \emph{negativo}, l'argomento viene estratto dallo stack, in base agli offset correnti.
+\end{itemize}
+Alla fine di ogni chiamata, vengono aggiornati i relativi offset in \texttt{va\_list} in base ai registri utilizzati o allo spazio consumato nello stack.
+
+Vediamo ora come questi meccanismi si applichino al caso specifico \texttt{printf}.
+La funzione variadica \texttt{printf} possiede la \emph{format string} come unico parametro fisso. Tale argomento occuperà quindi il primo registro \emph{general-purpose} disponibile, ovvero \texttt{\%rdi}. Gli eventuali argomenti aggiuntivi, occuperanno i successivi registri o lo stack, in base al loro tipo e numero.
+Se al chiamante passata esclusivamente la \emph{format string} senza ulteriori argomenti, il prologo della funzione provvederà comunque a salvare il contenuto (potenzialmente indefinito) dei restanti cinque registri \emph{general-purpose} all'interno della \emph{register save area}.
+Qualora la \emph{format string} contenesse degli specificatori (ad es. \texttt{\%x} o \texttt{\%p}), la libreria richiamerebbe iterativamente \texttt{va\_arg}, andando a leggere il contenuto di quei registri che, di fatto, non corrispondono ad alcun argomento reale. Per questo motivo, ai fini di questa trattazione, possiamo riferirci a questi valori con il termine informale di ``argomenti fantasma'' (ovvero dati residui di precedenti operazioni trattati erroneamente come parametri validi).
+Se, inoltre, la stringa contenesse un numero di specificatori tale da esaurire i registri disponibili, \texttt{va\_arg} proseguirebbe la lettura, andando a prelevare ulteriori ``argomenti fantasma'',direttamente dallo stack.
+Vedremo nel Capitolo 2 come questo comportamento permetta a un attaccante di ottenere la lettura e la scrittura di locazioni di memoria arbitrarie, gettando le basi teoriche per lo sfruttamento delle vulnerabilità di tipo \emph{Format String}.
