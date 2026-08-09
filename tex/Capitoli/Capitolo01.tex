@@ -100,9 +100,8 @@ Per il nostro scopo sono rilevanti:
 \end{itemize}
 
 
-\section{La calling convention x86\_64 e il confronto con x86}\label{sec:callconv}
+\section{La calling convention x86\_64}\label{sec:callconv}
 Analizziamo la vulnerabilità \emph{format string} in particolare per l'architettura x86\_64, nota anche come AMD64. Ci interessano le convenzioni utilizzate da tale architettura durante la chiamata di funzione, in particolare dove vengono memorizzati gli argomenti passati alla funzione (ci servirà quando andremo a sfruttare la vulnerabilità).
-Facciamo poi anche un rapido confronto con l'architettura x86 per mostrare l'impatto che il cambiamento di architettura può avere sulla tecnica di sfruttamento.
 
 \subsection{System V AMD64 ABI: registri per il passaggio dei parametri}\label{subsec:sysv_registri}
 \begin{defn}[ABI]\label{def:abi}

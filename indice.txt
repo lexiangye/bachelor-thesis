@@ -3,10 +3,9 @@ Prosa continua, toccando: contesto e motivazione, obiettivi e delimitazione dell
 
 Capitolo 1 – Background tecnico
     1.1 Funzioni variadiche in C e specificatori di formato di printf
-    1.2 La calling convention x86_64 e il confronto con x86
+    1.2 La calling convention x86_64
         1.2.1 System V AMD64 ABI: registri per il passaggio dei parametri
         1.2.2 Il caso delle funzioni variadiche
-        1.2.3 Confronto con x86 (cdecl): l'impatto sulla tecnica di exploitation
     1.3 Ambiente di riferimento: Linux e glibc
     1.4 Strumenti utilizzati
 
