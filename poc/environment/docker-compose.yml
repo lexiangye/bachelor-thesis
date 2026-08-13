@@ -1,0 +1,10 @@
+services:
+  bin-exp:
+    container_name: lexiang-binary
+    hostname: ubuntu22.04
+    build: .
+    image: lexiangye/ubuntu22.04-binary:latest
+    stdin_open: true
+    tty: true
+    volumes:
+      - ../:/poc/
