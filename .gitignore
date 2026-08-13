@@ -9,3 +9,9 @@
 
 # Built Visual Studio Code Extensions
 *.vsix
+
+# Log and history files
+.bash_history
+
+# System and package caches
+.cache/
