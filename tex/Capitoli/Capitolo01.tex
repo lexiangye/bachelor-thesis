@@ -221,3 +221,39 @@ Se al chiamato viene passata esclusivamente la \emph{format string} senza ulteri
 Qualora la \emph{format string} contenesse degli specificatori (ad es. \texttt{\%x} o \texttt{\%p}), la libreria richiamerebbe iterativamente \texttt{va\_arg}, andando a leggere il contenuto di quei registri che, di fatto, non corrispondono ad alcun argomento reale. Per questo motivo, ai fini di questa trattazione, possiamo riferirci a questi valori con il termine informale di ``argomenti fantasma'' (ovvero dati residui di precedenti operazioni trattati erroneamente come parametri validi).
 Se, inoltre, la stringa contenesse un numero di specificatori tale da esaurire i registri disponibili, \texttt{va\_arg} proseguirebbe la lettura, andando a prelevare ulteriori ``argomenti fantasma'', direttamente dallo stack.
 Vedremo nel Capitolo~\ref{chapter:fmt_vuln} come questo comportamento permetta a un attaccante di ottenere la lettura e la scrittura di locazioni di memoria arbitrarie, gettando le basi teoriche per lo sfruttamento delle vulnerabilità di tipo \emph{format string}.
+
+
+\section{Ambiente e strumenti}\label{sec:env_tools}
+Qui vengono definiti l'ambiente in cui si lavora e gli strumenti utilizzati.
+
+\subsection{Ambiente di riferimento: Linux e glibc}\label{subsec:env}
+È fondamentale specificare l'ambiente perché i meccanismi visti finora non dipendono solo dall'architettura, ma dalla ABI e dalla libreria C effettivamente in uso (come per gli specificatori posizionali \texttt{n\$} discussi nella Sezione~\ref{sec:funcvar_format}).
+
+\begin{table}[ht]
+    \centering
+    \caption{Componenti e versioni dell'ambiente di riferimento}
+    \label{tab:ambiente_riferimento}
+    \begin{tabular}{ll}
+        \toprule
+        Componente & Versione \\
+        \midrule
+        Sistema operativo & Ubuntu 22.04 LTS \\
+        Architettura & x86\_64 \\
+        Compilatore & GCC 11.4.0 \\
+        Libreria C & glibc 2.35 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Il Dockerfile che fissa questi componenti in modo riproducibile è disponibile nel repository del progetto \cite{repo_poc}.
+
+\subsection{Strumenti utilizzati}\label{subsec:tools}
+Questi strumenti ci servono per analizzare il binario vulnerabile e crearci uno script che lo sfrutti (\emph{exploit}):
+\begin{itemize}
+    \item \texttt{file}, per vedere il formato del file binario e la sua architettura;
+    \item \texttt{pwn checksec}, per controllare le impostazioni di sicurezza del binario;
+    \item \texttt{objdump}, per il disassemblaggio e l'ispezione a basso livello del binario;
+    \item \texttt{Ghidra}, \emph{Software Reverse Engineering} (SRE) Framework per analizzare codice compilato (include funzionalità di disassemblaggio e decompilazione) \cite{ghidra};
+    \item \texttt{pwndbg}, plugin per \texttt{GDB} per il \emph{debugging} del binario;
+    \item \texttt{pwntools}, libreria di sviluppo per gli \emph{exploit} scritta in Python, per creare quello che andrà a sfruttare il binario vulnerabile \cite{pwntools}.
+\end{itemize}
