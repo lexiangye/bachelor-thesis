@@ -1,11 +1,62 @@
 \chapter{La vulnerabilità Format String}\label{chapter:fmt_vuln}
+In questo capitolo è presentato in che modo la vulnerabilità \emph{format string} viene introdotta con un utilizzo errato della \texttt{printf} e quali azioni è possibile compiere quando essa è presente.
 
 
 \section{Uso corretto e uso errato di printf}\label{sec:printf_right_wrong}
+La funzione \texttt{printf} può essere utilizzata in diversi modi, alcuni corretti e sicuri, ed altri errati e vulnerabili.
+Questo aspetto si basa principalmente su chi ha il controllo della \emph{format string}: il programmatore oppure l'utilizzatore del programma.
 
-\subsection{Il pattern sicuro: format string come letterale}\label{subsec:right_fmt}
+\subsection{Il pattern sicuro: format string come costante}\label{subsec:right_fmt}
+Un uso corretto prevede che, all'interno della \emph{format string}, ogni specificatore di formato corrisponda a un argomento effettivamente passato alla funzione e che i rispettivi tipi di dato siano tra loro compatibili.
+Per rispettare questa regola, la \emph{format string} deve essere scritta staticamente nel codice sorgente dal programmatore, in modo che sia sotto il suo esclusivo controllo (Codice~\ref{lst:right_fmt}).
+\begin{lstlisting}[
+    language=C,
+    gobble=4,
+    caption={Esempio di uso sicuro di \texttt{printf}},
+    label={lst:right_fmt}
+]
+    #include <stdio.h>
+
+    int main(void) {
+        char buf[64];
+        
+        if (fgets(buf, sizeof(buf), stdin) == NULL) {
+            return 1;
+        }
+        
+        printf("%s", buf);
+
+        return 0;
+    }
+\end{lstlisting}
+
+Tuttavia, il fatto che sia scritta staticamente non evita che possano esserci \emph{undefined behavior} o un \emph{leak} di informazioni. Il programmatore ha la responsabilità di controllare il numero e il tipo degli specificatori rispetto agli argomenti.
 
 \subsection{Il pattern vulnerabile: format string controllata dall'utente}\label{subsec:wrong_fmt}
+Un uso errato e vulnerabile consiste nell'avere la \emph{format string} sotto il completo controllo dell'utente (Codice~\ref{lst:wrong_fmt}).
+Di conseguenza, un attaccante può rompere facilmente la regola secondo cui ogni specificatore deve corrispondere ad un argomento effettivamente passato alla \texttt{printf}.
+\begin{lstlisting}[
+    language=C,
+    gobble=4,
+    caption={Esempio di uso vulnerabile di \texttt{printf}},
+    label={lst:wrong_fmt}
+]
+    #include <stdio.h>
+
+    int main(void) {
+        char buf[64];
+
+        if (fgets(buf, sizeof(buf), stdin) == NULL) {
+            return 1;
+        }
+
+        printf(buf);
+
+        return 0;
+    }
+\end{lstlisting}
+Come detto nella Sezione~\ref{sec:callconv}, se uno specificatore non corrisponde a nessun argomento passato alla \texttt{printf}, esso va ad agire su dati residui presenti sui registri o sullo stack, in base ai valori correnti degli offset di \texttt{va\_list}.
+Questo permette all'attaccante di causare \emph{leak} di informazioni o addirittura di eseguire scritture in memoria.
 
 
 \section{Information disclosure: lettura dalla memoria con \%x, \%p, \%s}
