@@ -17,7 +17,8 @@ poc/
 │   └── docker-compose.yml
 ├── targets/
 │   ├── Makefile
-│   ├── leak_write_demo.c
+│   ├── leak_demo.c
+│   ├── write_demo.c
 │   └── vuln_service.c
 └── exploits/
     ├── sez2_2_info_leak.py
@@ -52,7 +53,8 @@ make
 
 | File | Sezioni | Ruolo |
 |---|---|---|
-| `leak_write_demo.c` | §2.2, §2.3, §2.4 | programma minimale, una tecnica alla volta |
+| `leak_demo.c` | §2.2 | target per mostrare l'information disclosure |
+| `write_demo.c` | §2.3, §2.4 | target per mostrare la scrittura in memoria |
 | `vuln_service.c` | Cap. 3 | target persistente per l'exploit end-to-end |
 
 ## Eseguire gli exploit
