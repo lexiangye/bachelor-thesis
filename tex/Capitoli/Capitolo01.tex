@@ -79,7 +79,7 @@ Il principio di \texttt{printf} della libreria standard è identico; l'aspetto c
     caption={Struttura generale di uno specificatore di formato della famiglia \texttt{printf} (con l'estensione posizionale POSIX)},
     label={lst:format_specifier_syntax}
 ]
-    %[n$][flag][larghezza][.precisione][lunghezza]specificatore
+    %[n$][flag][larghezza][.precisione][lunghezza]conversione
 \end{lstlisting}
 Per il nostro scopo sono rilevanti:
 \begin{itemize}
@@ -89,9 +89,10 @@ Per il nostro scopo sono rilevanti:
         \begin{itemize}
             \item \texttt{hh} che per definizione è esattamente 1 byte di dimensione
             \item \texttt{h} che è praticamente sempre 2 byte di dimensione
+            \item \texttt{l} che, sull'ambiente di riferimento di questa tesi (Tabella~\ref{tab:ambiente_riferimento}), è 8 byte di dimensione
         \end{itemize}
 
-    \item \emph{specificatore}, definisce il tipo e l'interpretazione del relativo argomento. Ci interessano:
+    \item \emph{conversione}, definisce il tipo e l'interpretazione del relativo argomento. Ci interessano:
         \begin{itemize}
             \item \texttt{x}, stampa l'argomento intero esadecimale senza segno
             \item \texttt{p}, stampa l'argomento come indirizzo di memoria (puntatore)
@@ -168,14 +169,14 @@ La soluzione è quella di mettere, nel prologo delle funzioni variadiche, del co
         \texttt{\%r8}  & 32 \\
         \texttt{\%r9}  & 40 \\
         \midrule
-        \texttt{\%xmm0--\%xmm7} & 48--175 \\
+        \texttt{\%xmm0}--\texttt{\%xmm7} & 48--175 \\
         \bottomrule
     \end{tabular}
 \end{table}
 
 Devono essere salvati solo i registri che potrebbero essere utilizzati per passare gli argomenti. 
 Una funzione variadica chiamata non sa quanti registri \emph{general-purpose} verranno popolati.
-\footnote{Un problema analogo riguarda i registri vettoriali \texttt{\%xmm0--\%xmm7}, usati per gli argomenti \emph{floating-point}. La System V AMD64 ABI, però, risolve il caso diversamente: prima di ogni chiamata potenzialmente variadica, il chiamante imposta \texttt{\%al} (il byte basso di \texttt{\%rax}) a un valore fra 0 e 8, che il prologo usa come limite superiore --- non necessariamente esatto --- al numero di registri vettoriali da salvare, evitando così di inizializzare inutilmente l'unità XMM \cite{psabi2025}.}
+\footnote{Un problema analogo riguarda i registri vettoriali \texttt{\%xmm0}--\texttt{\%xmm7}, usati per gli argomenti \emph{floating-point}. La System V AMD64 ABI, però, risolve il caso diversamente: prima di ogni chiamata potenzialmente variadica, il chiamante imposta \texttt{\%al} (il byte basso di \texttt{\%rax}) a un valore fra 0 e 8, che il prologo usa come limite superiore --- non necessariamente esatto --- al numero di registri vettoriali da salvare, evitando così di inizializzare inutilmente l'unità XMM \cite{psabi2025}.}
 Di conseguenza, per non perdere potenziali dati validi, il prologo è obbligato a salvare sempre tutti e sei i registri \emph{general-purpose} destinati al passaggio dei parametri all'interno della \emph{register save area} sullo stack \cite{psabi2025}.
 
 Il tipo \texttt{va\_list} (Codice~\ref{lst:va_list}) è un array di un solo elemento di tipo \texttt{struct}, contenente le informazioni necessarie per permettere alla macro \texttt{va\_arg} di estrarre l'argomento successivo correttamente \cite{psabi2025}. È compito della macro \texttt{va\_start} inizializzare questa \texttt{struct}.
