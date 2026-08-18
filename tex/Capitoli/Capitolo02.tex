@@ -191,10 +191,10 @@ La sequenza di specificatori \texttt{\%lx} consuma, uno per uno, gli slot dispon
 
 Lo specificatore \texttt{\%7\$lx}, usato da solo, referenzia direttamente la settima posizione senza che le prime sei compaiano esplicitamente nella \emph{format string}: è esattamente il caso dei ``buchi'' descritto nella Sezione~\ref{sec:funcvar_format}, che la specifica richiede di evitare \cite{man3printf}. Il meccanismo che risolve la posizione richiesta si comporta però come se, per ciascuna delle sei posizioni non referenziate, fosse stato comunque letto un valore con \texttt{\%lx}. Non è un caso che i due metodi diano lo stesso risultato: entrambi consumano, nello stesso ordine, la stessa sequenza di slot \emph{general-purpose} (i cinque registri, poi lo stack) prima di raggiungere il settimo.\footnote{Se una delle posizioni saltate corrispondesse invece a un valore \emph{floating-point}, questa equivalenza implicita non varrebbe più: il conteggio dei registri \emph{general-purpose} avanzerebbe comunque, ma quello dei registri vettoriali no, disallineando i due contatori (verificato empiricamente).}
 
-Il principio appena dimostrato non dipende dallo specifico specificatore \texttt{\%lx}: qualunque conversione che non dereferenzi l'argomento (come \texttt{\%x} e \texttt{\%p}), leggerebbe lo stesso registro o la stessa posizione di stack, cambiando solo il modo in cui il valore viene stampato. Lo stesso disallineamento tra specificatori dichiarati e argomenti realmente forniti che abbiamo sfruttato per leggere permette, come vedremo nella prossima sezione, anche di scrivere in memoria.
+Il principio appena dimostrato non dipende dallo specifico specificatore \texttt{\%lx}: qualunque conversione di classe \emph{INTEGER} che non dereferenzi l'argomento (come \texttt{\%x} e \texttt{\%p}) leggerebbe lo stesso registro o la stessa posizione di stack, cambiando solo il modo in cui il valore viene stampato. Lo stesso disallineamento tra specificatori dichiarati e argomenti realmente forniti che abbiamo sfruttato per leggere permette, come vedremo nella Sezione~\ref{sec:mem_write}, anche di scrivere in memoria.
 
 
-\section{Scrittura in memoria con \%n: il problema della dimensione}
+\section{Scrittura in memoria con \%n: il problema della dimensione}\label{sec:mem_write}
 
 
-\section{Scritture parziali: \%hhn e \%hn per la scrittura byte-a-byte}
+\section{Scritture parziali: \%hhn e \%hn per la scrittura byte-a-byte}\label{sec:partial_write}
