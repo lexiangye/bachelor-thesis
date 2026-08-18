@@ -59,7 +59,139 @@ Come detto nella Sezione~\ref{sec:callconv}, se uno specificatore non corrispond
 Questo permette all'attaccante di causare \emph{leak} di informazioni o addirittura di eseguire scritture in memoria.
 
 
-\section{Information disclosure: lettura dalla memoria con \%x, \%p, \%s}
+\section{Information disclosure: individuare e leggere un valore con \%x}\label{sec:info_disclosure}
+Prendiamo il codice vulnerabile appena mostrato e aggiungiamo una variabile locale \texttt{local\_secret} che viene allocata nello \emph{stack frame} della funzione \texttt{main} (Codice~\ref{lst:leak_demo_c}).
+Mostriamo, tramite lo sfruttamento della vulnerabilità \emph{format string}, come è possibile vederne il contenuto senza che questo venga passato esplicitamente a \texttt{printf} --- operazione altrimenti non fattibile.
+\begin{lstlisting}[
+    language=C,
+    gobble=4,
+    caption={Esempio di programma vulnerabile con variabile locale \texttt{local\_secret}},
+    label={lst:leak_demo_c}
+]
+    #include <stdio.h>
+
+    int main(void) {
+        long local_secret = 0x1337;
+
+        char buf[64];
+
+        if (fgets(buf, sizeof(buf), stdin) == NULL) {
+            return 1;
+        }
+
+        printf(buf);
+
+        return 0;
+    }
+\end{lstlisting}
+
+Per sapere dove la variabile \texttt{local\_secret} viene collocata esattamente, è necessario analizzare il disassemblato (Codice~\ref{lst:disas_leak_demo}), ovvero il codice assembly ricavato dalla traduzione del codice macchina dell'eseguibile, prodotto dalla compilazione di Codice~\ref{lst:leak_demo_c}. Da questo è possibile capire lo spazio che il \texttt{main} riserva alle sue variabili locali, dove esattamente le posiziona e anche la struttura del suo \emph{stack frame}.
+\begin{lstlisting}[
+    language={},
+    numbers=none,
+    gobble=4,
+    caption={Estratto del disassemblato di \texttt{main}: posizione di \texttt{local\_secret}},
+    label={lst:disas_leak_demo}
+]
+
+    ; ...
+
+    push   rbp
+    mov    rbp, rsp
+    sub    rsp, 0x60
+    
+    ; ...
+    
+    mov    QWORD PTR [rbp-0x58], 0x1337
+    
+    ; ...
+    
+    call   printf@plt
+    
+    ; ...
+\end{lstlisting}
+Lo spazio per le variabili locali viene allocato da ``\texttt{sub rsp, 0x60}'', ovvero 96 byte.
+Il registro \texttt{rsp} (\emph{stack pointer}) subito prima della \texttt{sub} ha lo stesso valore del registro \texttt{rbp} (\emph{base pointer}). Di conseguenza ``\texttt{mov QWORD PTR [rbp-0x58], 0x1337}'' indica che \texttt{local\_secret} si trova nel secondo \emph{qword} (blocco da 8 byte) a partire dalla cima dello stack (\texttt{rsp}), poiché il primo \emph{qword} si troverebbe a \texttt{rbp-0x60}.
+
+Lo stack pointer non viene più modificato prima della chiamata a \texttt{printf} che quindi si ritrova con lo stack nello stato illustrato in Figura~\ref{fig:stack_leak_demo}.
+
+\begin{figure}[ht]
+    \centering
+    \begin{tikzpicture}[
+        box/.style={
+            draw, thick,
+            minimum width=4.8cm,
+            minimum height=1cm,
+            anchor=south west,
+            font=\ttfamily\small
+        },
+        emptybox/.style={
+            draw, thick,
+            minimum width=4.8cm,
+            minimum height=1cm,
+            anchor=south west
+        },
+        ptr/.style={-{Stealth[length=3mm]}, thick},
+        addr/.style={font=\ttfamily\footnotesize, anchor=west, inner sep=3pt}
+    ]
+
+    % Blocchi: base (indirizzi alti) in basso, cima (indirizzi bassi) in alto
+    \node[box] (ret)    at (0,0) {saved ret addr};
+    \node[box] (srbp)   at (0,1) {saved rbp};
+    \node[emptybox, minimum height=2cm] (gapmid) at (0,2) {};
+    \node at (2.4,3) {\color{gray}$\vdots$};
+    \node[box] (secret) at (0,4) {local\_secret = 0x1337};
+    \node[emptybox] (topgap) at (0,5) {};
+
+    % Puntatori a sinistra: freccia allo spigolo alto-sinistra del blocco
+    \node[font=\ttfamily\small, anchor=east] (rsplabel) at (-1.9,6) {rsp};
+    \draw[ptr] (rsplabel.east) -- (0,6);
+    \node[font=\ttfamily\small, anchor=east] (rbplabel) at (-1.9,2) {rbp};
+    \draw[ptr] (rbplabel.east) -- (0,2);
+
+    % Indirizzi a destra: allo spigolo alto-destra del blocco
+    \node[addr] at (4.8,6) {rbp-0x60};
+    \node[addr] at (4.8,5) {rbp-0x58};
+
+    % Etichette indirizzi alti/bassi + freccia verticale
+    \node[font=\small] (low)  at (8.1,6.3) {indirizzi più bassi};
+    \node[font=\small] (high) at (8.1,-0.3) {indirizzi più alti};
+    \draw[ptr] (low) -- (high);
+
+    \end{tikzpicture}
+    \caption{Stato dello \emph{stack frame} di \texttt{main} al momento della chiamata a \texttt{printf}, con la posizione di \texttt{local\_secret}}
+    \label{fig:stack_leak_demo}
+    
+\end{figure}
+
+La \emph{format string} occupa da sola il primo registro disponibile, \texttt{\%rdi}; restano quindi cinque registri \emph{general-purpose} (\texttt{\%rsi}, \texttt{\%rdx}, \texttt{\%rcx}, \texttt{\%r8}, \texttt{\%r9}) che la \emph{format string} non ha richiesto esplicitamente, ma che \texttt{va\_arg} considera comunque disponibili: sono gli ``argomenti fantasma'' introdotti nella Sezione~\ref{sec:callconv}. I primi cinque specificatori di formato leggono dunque, uno per uno, il contenuto residuo di questi cinque registri.
+
+Esauriti i registri, il sesto specificatore legge il primo argomento dallo stack, puntato da \texttt{overflow\_arg\_area} a partire dall'\texttt{rsp} di \texttt{main} al momento della chiamata --- lo stesso \texttt{rsp} da cui abbiamo appena misurato la posizione di \texttt{local\_secret}. Il settimo specificatore legge quindi il secondo \emph{qword} a partire da \texttt{rsp}, che è esattamente dove si trova \texttt{local\_secret}.
+
+Abbiamo due modi per arrivare a \texttt{local\_secret} (Codice~\ref{lst:leak_interaction}):
+\begin{itemize}
+    \item tramite una sequenza di specificatori di formato \texttt{\%lx};
+    \item tramite lo specificatore di formato \texttt{\%7\$lx}.
+\end{itemize}
+\begin{lstlisting}[
+    language={},
+    numbers=none,
+    gobble=4,
+    caption={Invio della \emph{format string} per il \emph{leak} di \texttt{local\_secret}},
+    label={lst:leak_interaction}
+]
+    %lx %lx %lx %lx %lx %lx %lx
+    55790cd9e2a1 fbad2288 55790cd9e2bc 0 55790cd9e2a0 0 1337
+
+    %7$lx
+    1337
+\end{lstlisting}
+
+La sequenza di specificatori \texttt{\%lx} consuma, uno per uno, gli slot disponibili --- i cinque registri, poi lo stack --- fino a raggiungere \texttt{local\_secret} al settimo, stampato come \texttt{1337}.
+
+Lo specificatore \texttt{\%7\$lx}, usato da solo, referenzia direttamente la settima posizione senza che le prime sei compaiano esplicitamente nella \emph{format string}: è esattamente il caso dei ``buchi'' descritto nella Sezione~\ref{sec:funcvar_format}, che la specifica richiede di evitare \cite{man3printf}. Il meccanismo che risolve la posizione richiesta si comporta però come se, per ciascuna delle sei posizioni non referenziate, fosse stato comunque letto un valore con \texttt{\%lx}. Non è un caso che i due metodi diano lo stesso risultato: entrambi consumano, nello stesso ordine, la stessa sequenza di slot \emph{general-purpose} (i cinque registri, poi lo stack) prima di raggiungere il settimo.\footnote{Se una delle posizioni saltate corrispondesse invece a un valore \emph{floating-point}, questa equivalenza implicita non varrebbe più: il conteggio dei registri \emph{general-purpose} avanzerebbe comunque, ma quello dei registri vettoriali no, disallineando i due contatori (verificato empiricamente).}
+
+Il principio appena dimostrato non dipende dallo specifico specificatore \texttt{\%lx}: qualunque conversione che non dereferenzi l'argomento (come \texttt{\%x} e \texttt{\%p}), leggerebbe lo stesso registro o la stessa posizione di stack, cambiando solo il modo in cui il valore viene stampato. Lo stesso disallineamento tra specificatori dichiarati e argomenti realmente forniti che abbiamo sfruttato per leggere permette, come vedremo nella prossima sezione, anche di scrivere in memoria.
 
 
 \section{Scrittura in memoria con \%n: il problema della dimensione}
