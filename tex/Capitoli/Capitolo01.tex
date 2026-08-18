@@ -83,7 +83,7 @@ Il principio di \texttt{printf} della libreria standard è identico; l'aspetto c
 \end{lstlisting}
 Per il nostro scopo sono rilevanti:
 \begin{itemize}
-    \item \emph{posizione} (\texttt{n\$}), permette di indicare esplicitamente quale argomento della lista debba essere formattato, anziché consumare implicitamente il successivo non ancora utilizzato (ad es. \texttt{\%3\$x} formatta come esadecimale il terzo argomento dopo \texttt{fmt}). Non fa parte dello standard ISO C, ma è un'estensione POSIX \cite{man3printf}; la sua disponibilità dipende quindi dalla libreria C effettivamente linkata, non dal linguaggio in sé.
+    \item \emph{posizione} (\texttt{n\$}), permette di indicare esplicitamente quale argomento della lista debba essere formattato, anziché consumare implicitamente il successivo non ancora utilizzato (ad es. \texttt{\%3\$x} formatta come esadecimale il terzo argomento dopo \texttt{fmt}). Non fa parte dello standard C, ma è un'estensione POSIX; la sua disponibilità dipende quindi dalla libreria C effettivamente linkata, non dal linguaggio in sé. Se si adotta questo stile, la specifica richiede inoltre che ogni posizione fino alla più alta usata compaia almeno una volta nella \emph{format string}, senza ``buchi'' \cite{man3printf}.
     \item \emph{larghezza}, il numero minimo di caratteri da stampare. Se il valore da stampare è più corto di questo numero, il risultato viene riempito con spazi vuoti. Il valore non viene troncato, nemmeno se risulta più lungo.
     \item \emph{lunghezza}, modifica la dimensione del tipo di dato. Noi useremo:
         \begin{itemize}
