@@ -11,7 +11,7 @@ int main(void) {
 
     printf(buf);
 
-    printf("global_secret = 0x%lx\n", global_secret);
+    printf("\nglobal_secret = 0x%lx\n", global_secret);
 
     return 0;
 }
