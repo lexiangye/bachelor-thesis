@@ -85,7 +85,7 @@ Mostriamo, tramite lo sfruttamento della vulnerabilità \emph{format string}, co
     }
 \end{lstlisting}
 
-Per sapere dove la variabile \texttt{local\_secret} viene collocata esattamente, è necessario analizzare il disassemblato (Codice~\ref{lst:disas_leak_demo}), ovvero il codice assembly ricavato dalla traduzione del codice macchina dell'eseguibile, prodotto dalla compilazione di Codice~\ref{lst:leak_demo_c}. Da questo è possibile capire lo spazio che il \texttt{main} riserva alle sue variabili locali, dove esattamente le posiziona e anche la struttura del suo \emph{stack frame}.
+Per determinare dove la variabile \texttt{local\_secret} viene collocata esattamente, è necessario analizzare il disassemblato (Codice~\ref{lst:disas_leak_demo}), ovvero il codice assembly ricavato dalla traduzione del codice macchina dell'eseguibile, prodotto dalla compilazione di Codice~\ref{lst:leak_demo_c}. Da questo è possibile capire lo spazio che il \texttt{main} riserva alle sue variabili locali, dove esattamente le posiziona e anche la struttura del suo \emph{stack frame}.
 \begin{lstlisting}[
     language={},
     numbers=none,
@@ -168,6 +168,8 @@ La \emph{format string} occupa da sola il primo registro disponibile, \texttt{\%
 
 Esauriti i registri, il sesto specificatore legge il primo argomento dallo stack, puntato da \texttt{overflow\_arg\_area} a partire dall'\texttt{rsp} di \texttt{main} al momento della chiamata --- lo stesso \texttt{rsp} da cui abbiamo appena misurato la posizione di \texttt{local\_secret}. Il settimo specificatore legge quindi il secondo \emph{qword} a partire da \texttt{rsp}, che è esattamente dove si trova \texttt{local\_secret}.
 
+\texttt{local\_secret} è dichiarata \texttt{long} (Codice~\ref{lst:leak_demo_c}): leggerla per intero richiede che lo specificatore interpreti 8 byte, non i 4 di un int. Da qui il modificatore \texttt{l} già visto nella Sezione~\ref{sec:funcvar_format}.
+
 Abbiamo due modi per arrivare a \texttt{local\_secret} (Codice~\ref{lst:leak_interaction}):
 \begin{itemize}
     \item tramite una sequenza di specificatori di formato \texttt{\%lx};
@@ -195,7 +197,7 @@ Il principio appena dimostrato non dipende dallo specifico specificatore \texttt
 
 
 \section{Scrittura in memoria con \%n: il problema della dimensione}\label{sec:mem_write}
-Prendiamo sempre il Codice~\ref{lst:wrong_fmt} e questa volta inseriamo una variabile globale \texttt{global\_secret} inizializzata a \texttt{0} (Codice~\ref{lst:write_demo_c}). L'obiettivo di questa sezione è andare a scrivere il valore \texttt{0x1337} all'interno di questa variabile, cui valore verrà stampato in \texttt{stdout} dalla \texttt{printf} a riga 12 (Codice~\ref{lst:write_demo_c}).
+Riprendiamo il Codice~\ref{lst:wrong_fmt} e questa volta inseriamo una variabile globale \texttt{global\_secret} inizializzata a \texttt{0} (Codice~\ref{lst:write_demo_c}). L'obiettivo di questa sezione è scrivere il valore \texttt{0x1337} all'interno di questa variabile, il cui valore viene poi stampato in \texttt{stdout} dalla seconda \texttt{printf}.
 \begin{lstlisting}[
     language=C,
     gobble=4,
@@ -221,15 +223,13 @@ Prendiamo sempre il Codice~\ref{lst:wrong_fmt} e questa volta inseriamo una vari
     }
 \end{lstlisting}
 
-Lo specificatore \texttt{\%n} permette la scrittura di valori arbitrari in indirizzi di memoria arbitrari.
-Tale specificatore, come gli altri, fa riferimento a un argomento --- realmente passato o fantasma --- che viene considerato come l'indirizzo di scrittura.
-Il valore scritto corrisponde al numero di caratteri stampati dalla \texttt{printf} prima di incontrare lo specificatore in questione (Sezione~\ref{sec:funcvar_format}).
+Lo specificatore \texttt{\%n}, come gli altri, fa riferimento a un argomento --- realmente passato o fantasma --- che viene considerato come l'indirizzo di scrittura; il valore scritto corrisponde al numero di caratteri stampati dalla \texttt{printf} prima di incontrare lo specificatore in questione (Sezione~\ref{sec:funcvar_format}). Quando quell'argomento è fantasma, sia l'indirizzo sia il valore scritto sfuggono al controllo del programmatore: \texttt{\%n} diventa così una primitiva di scrittura arbitraria, a patto di riuscire a piazzare l'indirizzo voluto nell'argomento fantasmo giusto.
 
-Di conseguenza, è necessario conoscere l'indirizzo di \texttt{global\_secret} e inserirlo nel buffer in modo che sia allineato a 8 byte affinché \texttt{\%n} ne faccia riferimento nella sua integrità. Inoltre occorre sapere la locazione di \texttt{buf} per conoscere la posizione da assegnare allo specificatore.
+Di conseguenza, è necessario conoscere l'indirizzo di \texttt{global\_secret} e inserirlo in \texttt{buf} in modo che sia allineato a 8 byte affinché \texttt{\%n} vi possa fare riferimento in modo corretto. Inoltre occorre sapere la posizione di \texttt{buf} per conoscere l'indice posizionale da assegnare allo specificatore.
 
-Nell'ambiente di riferimento (Tabella~\ref{tab:ambiente_riferimento}) il sorgente viene compilato di default con la protezione PIE (\emph{Position Independent Executable}), che causa il file binario a essere caricato in indirizzi di memoria differenti a ogni esecuzione. Pertanto anche l'indirizzo di \texttt{global\_secret}, essendo una variabile globale, cambia costantemente.
-Sfruttando la vulnerabilità \emph{format string} è comunque possibile ricavarcelo dinamicamente. Per semplicità però, in questo esempio viene disabilitata la protezione PIE. \footnote{Per disabilitare la protezione PIE, è necessario compilare il sorgente con le opzioni \texttt{-fno-pie} e \texttt{-no-pie}.}
-Senza tale protezione, l'indirizzo di \texttt{global\_secret} è fisso e possiamo vederlo sbirciando nel disassemblato (Codice~\ref{lst:disas_global_secret}).
+Nell'ambiente di riferimento (Tabella~\ref{tab:ambiente_riferimento}) il sorgente viene compilato di default con la protezione PIE (\emph{Position Independent Executable}), che rende possibile che il file binario venga caricato in indirizzi di memoria differenti a ogni esecuzione. Pertanto anche l'indirizzo di \texttt{global\_secret}, essendo una variabile globale, cambia a ogni esecuzione.
+Sfruttando la vulnerabilità \emph{format string} è comunque possibile ricavarlo dinamicamente. Per semplicità però, in questo esempio viene disabilitata la protezione PIE. \footnote{Per disabilitare la protezione PIE, è necessario compilare il sorgente con le opzioni \texttt{-fno-pie} e \texttt{-no-pie}.}
+Senza tale protezione, l'indirizzo di \texttt{global\_secret} è fisso ed è possibile individuarlo esaminando il disassemblato (Codice~\ref{lst:disas_global_secret}).
 \begin{lstlisting}[
     language={},
     numbers=none,
@@ -240,23 +240,23 @@ Senza tale protezione, l'indirizzo di \texttt{global\_secret} è fisso e possiam
 
     ; ...
 
-    4011c6:	  mov    rax,QWORD PTR [rip+0x2e83]        # 404050 <global_secret>
-    4011cd:	  mov    rsi,rax
-    4011d0:   mov    edi,0x402004
-    4011d5:	  mov    eax,0x0
-    4011da:	  call   401070 <printf@plt>
+    mov    rax,QWORD PTR [rip+0x2e83]  # 404050 <global_secret>
+    mov    rsi,rax
+    mov    edi,0x402004
+    mov    eax,0x0
+    call   401070 <printf@plt>
     
     ; ...
 \end{lstlisting}
 L'estratto (Codice~\ref{lst:disas_global_secret}) presenta la preparazione dei registri e la relativa chiamata alla \texttt{printf} che mostra il contenuto di \texttt{global\_secret}.
-È presente in un commento l'indirizzo di \texttt{global\_secret}, calcolato gentilmente dal disassemblatore di \texttt{objdump} (\texttt{rip+0x2e83}).
+Il commento generato automaticamente da \texttt{objdump} riporta l'indirizzo assoluto di \texttt{global\_secret} (\texttt{404050}), ottenuto risolvendo l'offset \texttt{rip+0x2e83} codificato nell'istruzione.
 
-La locazione di \texttt{buf} deve essere trovata nello stesso modo in cui abbiamo trovato \texttt{local\_secret} nella Sezione~\ref{sec:info_disclosure}. Occorre osservare, nel disassemblato (Codice~\ref{lst:disas_buf_write_demo}), a quale \emph{qword} si trova \texttt{buf} a partire da \texttt{rsp}, al momento della chiamata alla \texttt{printf} vulnerabile.
+La posizione di \texttt{buf} deve essere individuata nello stesso modo in cui abbiamo trovato \texttt{local\_secret} nella Sezione~\ref{sec:info_disclosure}. Occorre osservare, nel disassemblato (Codice~\ref{lst:disas_buf_write_demo}), a quale \emph{qword} si trova \texttt{buf} a partire da \texttt{rsp}, al momento della chiamata alla \texttt{printf} vulnerabile.
 \begin{lstlisting}[
     language={},
     numbers=none,
     gobble=4,
-    caption={Estratto del disassemblato di \texttt{main}: posizione di \texttt{global\_secret}},
+    caption={Estratto del disassemblato di \texttt{main}: posizione di \texttt{buf} nel programma con \texttt{global\_secret}},
     label={lst:disas_buf_write_demo}
 ]
     endbr64 
@@ -324,48 +324,39 @@ Vengono allocati \texttt{0x50} byte di spazio per le variabili locali e \texttt{
 
 \texttt{buf} è quindi la prima \emph{qword} a partire da \texttt{rsp}. Questo significa che \texttt{buf} corrisponde al sesto specificatore della \emph{format string}, poiché i primi cinque vengono occupati dai registri \emph{general-purpose}.
 
-È arrivato il momento di sovrascrivere \texttt{global\_secret}, localizzato all'indirizzo \texttt{0x404050}, con il valore \texttt{0x1337}.
-Dobbiamo inserire l'indirizzo, allineato a 8 byte, all'interno di \texttt{buf} e far sì che vengano stampati esattamente \texttt{0x1337=4919} caratteri prima che venga incontrato lo specificatore \texttt{\%n} usato per la scrittura.
-In questo caso ci aiuteremo con \texttt{pwntools} in uno script Python \ref{lst:python_write}.
+A questo punto, è possibile procedere con la sovrascrittura della variabile \texttt{global\_secret}, localizzata all'indirizzo \texttt{0x404050}, con il valore \texttt{0x1337}.
+Come per la lettura in Sezione~\ref{sec:info_disclosure}, anche \texttt{global\_secret} è \texttt{long} (Codice~\ref{lst:write_demo_c}): serve lo stesso modificatore l, che dà \texttt{\%ln} al posto di \texttt{\%n}.
 
+È necessario inserire tale indirizzo, allineato a 8 byte, all'interno di \texttt{buf} e far sì che vengano stampati esattamente \texttt{4919} caratteri (\texttt{0x1337} in esadecimale) prima che venga incontrato lo specificatore \texttt{\%ln} usato per la scrittura.
+
+Per effettuare questa operazione, si può utilizzare la libreria \texttt{pwntools} in uno script Python (Codice~\ref{lst:python_write}).
 \begin{lstlisting}[
     language={Python},
     numbers=none,
     gobble=4,
-    caption={Script Python: scrittura di \texttt{global\_secret} con \texttt{0x1337}},
+    caption={Scrittura di \texttt{global\_secret} con \texttt{pwntools}},
     label={lst:python_write}
 ]
-    from pwn import *
+    # ...
 
-    # Imposta il binario e il contesto
-    exe = ELF('../targets/write_demo')
-    context.binary = exe
-
-    # Fa partire il programma
-    io = exe.process()
-
-    # Invio del payload maligno
     payload = b'%4919x' \
                 + b'%8$ln' \
                 + b'\x00' * 5 \
                 + p64(0x404050)
     io.sendline(payload)
 
-    # Modalita' interattiva per vedere l'output
-    io.interactive()
-
+    # ...
 \end{lstlisting}
-Il payload maligno è costituito da:
+Il \emph{payload} maligno è costituito da:
 \begin{itemize}
-    \item \texttt{b'\%4919x'}, stampa del contenuto del primo argomento fantasma, riempito di spazi fino ad arrivare a \texttt{4919} caratteri. Prepara il terreno per \texttt{\%n};
-    \item \texttt{b'\%8\$ln'}, scrittura del numero di caratteri stampati finora da \texttt{printf} all'indirizzo presente nell'ottavo argomento fantasma.
-    \item \texttt{b'\textbackslash{}x00' * 5}, cinque byte di padding in modo che l'indirizzo inserito sia allineato a 8 byte.
-    \item \texttt{p64(0x404050)}, indirizzo impacchettato in \emph{little endian} in 64 bit. Inserito alla fine poiché altrimenti troncherebbe la \emph{format string} per la presenza di byte nulli.
+    \item \texttt{b`\%4919x'}: stampa parte del contenuto del primo argomento fantasma, riempito di spazi fino ad arrivare a \texttt{4919} caratteri. Questa operazione serve a impostare il contatore dei caratteri stampati per il successivo \texttt{\%ln};
+    \item \texttt{b`\%8\$ln'}: scrittura del numero di caratteri stampati finora da \texttt{printf} all'indirizzo presente nell'ottavo argomento fantasma. La posizione 8 non è casuale: \texttt{buf} occupa la posizione 6 e i due specificatori che la precedono nel \emph{payload} (\texttt{\%4919x} e \texttt{\%8\$ln} stessi, 11 byte in tutto) più i 5 byte di padding portano l'indirizzo a occupare la terza \emph{qword} di \texttt{buf} --- cioè, contando da 6, la posizione 8;
+    \item \texttt{b`\textbackslash{}x00' * 5}, cinque byte di padding in modo che l'indirizzo inserito sia allineato a 8 byte;
+    \item \texttt{p64(0x404050)}: indirizzo impacchettato in \emph{little endian} in 64 bit. Viene inserito alla fine del \emph{payload} perché contiene byte nulli (\texttt{\textbackslash{}x00}): se fosse posizionato prima, la \texttt{printf} li interpreterebbe come fine della stringa e smetterebbe di leggerla.
 \end{itemize}
-Insieme, permettono di scrivere il valore \texttt{4919=0x1337} nella variabile globale \texttt{global\_secret} all'indirizzo \texttt{0x404050}.
+Le posizioni 2--7 possono restare non referenziate esplicitamente grazie al meccanismo dei ``buchi'' già visto nella Sezione~\ref{sec:info_disclosure}
 
-
-
+Il valore appena scritto --- \texttt{4919} --- è comodo perché richiede di stampare solo qualche migliaio di caratteri prima di \texttt{\%ln}. Un indirizzo di memoria reale può però avere un valore molto più grande: pretendere che \texttt{printf} stampi un numero di caratteri pari al suo valore decimale (anche quindici cifre, per un indirizzo a 64 bit) non è più praticabile. La Sezione~\ref{sec:partial_write} mostra come aggirare il problema scrivendo un valore di queste dimensioni non in un solo colpo, ma attraverso più scritture di dimensione minore.
 
 
 \section{Scritture parziali: \%hhn e \%hn per la scrittura byte-a-byte}\label{sec:partial_write}
