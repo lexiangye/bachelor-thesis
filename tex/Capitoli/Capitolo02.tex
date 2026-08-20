@@ -334,7 +334,7 @@ Per effettuare questa operazione, si può utilizzare la libreria \texttt{pwntool
     language={Python},
     numbers=none,
     gobble=4,
-    caption={Scrittura di \texttt{global\_secret} con \texttt{pwntools}},
+    caption={Scrittura di \texttt{0x1337} in \texttt{global\_secret} con \texttt{pwntools}},
     label={lst:python_write}
 ]
     # ...
@@ -359,4 +359,47 @@ Le posizioni 2--7 possono restare non referenziate esplicitamente grazie al mecc
 Il valore appena scritto --- \texttt{4919} --- è comodo perché richiede di stampare solo qualche migliaio di caratteri prima di \texttt{\%ln}. Un indirizzo di memoria reale può però avere un valore molto più grande: pretendere che \texttt{printf} stampi un numero di caratteri pari al suo valore decimale (anche quindici cifre, per un indirizzo a 64 bit) non è più praticabile. La Sezione~\ref{sec:partial_write} mostra come aggirare il problema scrivendo un valore di queste dimensioni non in un solo colpo, ma attraverso più scritture di dimensione minore.
 
 
-\section{Scritture parziali: \%hhn e \%hn per la scrittura byte-a-byte}\label{sec:partial_write}
+\section{Scritture parziali: scrivere a blocchi di 2 byte con \%hn}\label{sec:partial_write}
+Riprendiamo il Codice~\ref{lst:write_demo_c} con \texttt{global\_secret}. Perciò \texttt{0x404050} corrisponde all'indirizzo di \texttt{global\_secret} e \texttt{buf} è posizionato come prima \emph{qword} a partire da \texttt{rsp}, corrispondente quindi al sesto specificatore della \emph{format string}.
+
+L'obiettivo è sempre sovrascrivere la variabile globale, ma questa volta con il valore \texttt{0xdeadbeef} invece di \texttt{0x1337}. Dato che siamo sull'ordine di grandezza del miliardo, lo scriveremo con due scritture parziali da 2 byte ciascuna, tramite \texttt{\%hn}, invece che con un'unica scrittura da 8 byte (\texttt{\%ln}).
+Il modificatore \texttt{h} (Sezione~\ref{sec:funcvar_format}) fa interpretare l'argomento di \texttt{\%n} come un puntatore a un valore di 2 byte. Per scrivere \texttt{0xdeadbeef}, che occupa 4 byte, servono dunque due scritture da 2 byte ciascuna.
+
+\texttt{global\_secret} resta comunque una variabile di 8 byte: le due scritture da 2 byte coprono solo i 4 byte meno significativi, lasciando formalmente indeterminati i 4 byte più significativi. In generale andrebbero azzerati con un'ulteriore scrittura, però, in questo caso non serve poiché \texttt{global\_secret} è inizializzata a \texttt{0} (Codice~\ref{lst:write_demo_c}) e quei 4 byte sono quindi già azzerati.
+
+Per via del fatto che l'ambiente di riferimento (Tabella~\ref{tab:ambiente_riferimento}) ha l'ordine dei byte in \emph{little endian}, i 2 byte meno significativi di \texttt{0xdeadbeef}, ovvero \texttt{0xbeef}, vanno scritti all'indirizzo più basso, cioè \texttt{0x404050}, l'indirizzo di \texttt{global\_secret} già individuato nella Sezione~\ref{sec:mem_write}. I 2 byte più significativi, ovvero \texttt{0xdead}, vanno invece scritti 2 byte più avanti, a \texttt{0x404050 + 2}.
+
+Inoltre, trattandosi di un'unica chiamata a \texttt{printf}, il contatore dei caratteri stampati può solo crescere, quindi le due scritture vanno ordinate per valore, non per indirizzo. Tra \texttt{0xbeef} (\texttt{48879} in decimale) e \texttt{0xdead} (\texttt{57005}), il primo è più piccolo e va scritto per primo.
+
+Vediamo l'estratto \texttt{Python} per la scrittura parziale e analizziamo come è costruito il payload (Codice~\ref{lst:python_partial_write}).
+\begin{lstlisting}[
+    language={Python},
+    numbers=none,
+    gobble=4,
+    caption={Scrittura parziale di \texttt{0xdeadbeef} in \texttt{global\_secret} con \texttt{pwntools}},
+    label={lst:python_partial_write}
+]
+    # ...
+
+    payload = b'%48879x' + b'%10$hn' \
+                + b'%8126x' + b'%11$hn' \
+                + b'\x00' * 7 \
+                + p64(0x404050) \
+                + p64(0x404050 + 2)            
+    io.sendline(payload)
+
+    # ...
+\end{lstlisting}
+
+Il payload è costituito da:
+\begin{itemize}
+    \item \texttt{b`\%48879x'} + \texttt{b`\%10\$hn'}: il padding porta il contatore di caratteri stampati a \texttt{48879} (\texttt{0xbeef}) e \texttt{\%10\$hn} scrive quel valore all'indirizzo contenuto nel decimo argomento fantasma, \texttt{0x404050}.
+    \item \texttt{b`\%8126x'} + \texttt{b`\%11\$hn'}: altri \texttt{8126} caratteri portano il contatore a \texttt{57005} (\texttt{0xdead}) e \texttt{\%11\$hn} scrive questo secondo valore all'indirizzo presente nell'undicesimo argomento fantasma, \texttt{0x404050 + 2}.
+    \item \texttt{b'\textbackslash{}x00' * 7}: byte di riempimento per allineare i due indirizzi a 8 byte all'interno di \texttt{buf}, per lo stesso motivo della Sezione~\ref{sec:mem_write}.
+    \item \texttt{p64(0x404050)} e \texttt{p64(0x404050 + 2)}: i due indirizzi per le scritture parziali.
+\end{itemize}
+La posizione usata per ciascun indirizzo è sempre ricavata contando i byte: \texttt{buf} occupa la posizione 6, e i quattro specificatori di testo del payload (\texttt{\%48879x}, \texttt{\%10\$hn}, \texttt{\%8126x}, \texttt{\%11\$hn}, 25 byte in tutto) più 7 byte di allineamento portano i due indirizzi a occupare la quinta e la sesta \emph{qword} di \texttt{buf}, cioè le posizioni 10 e 11 (Codice~\ref{lst:python_partial_write}).
+
+Al termine, \texttt{global\_secret} vale \texttt{0x00000000deadbeef}: le due scritture parziali compongono \texttt{0xdeadbeef} nella metà bassa, mentre la metà alta resta a \texttt{0} per l'inizializzazione del Codice~\ref{lst:write_demo_c}.
+
+È possibile fare scritture parziali anche con \texttt{\%hhn}. La dimensione di queste scritture sarà ancora minore, ovvero di 1 byte ciascuno, ma il procedimento è lo stesso di quello visto per \texttt{\%hn}.
