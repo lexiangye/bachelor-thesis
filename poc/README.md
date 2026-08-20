@@ -23,7 +23,7 @@ poc/
 └── exploits/
     ├── sez2_2_info_leak.py
     ├── sez2_3_write.py
-    ├── sez2_4_byte_write.py
+    ├── sez2_4_partial_write.py
     └── exploit.py
 ```
 
