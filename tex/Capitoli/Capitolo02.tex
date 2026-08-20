@@ -60,7 +60,7 @@ Questo permette all'attaccante di causare \emph{leak} di informazioni o addiritt
 
 
 \section{Information disclosure: individuare e leggere un valore con \%x}\label{sec:info_disclosure}
-Prendiamo il codice vulnerabile appena mostrato e aggiungiamo una variabile locale \texttt{local\_secret} che viene allocata nello \emph{stack frame} della funzione \texttt{main} (Codice~\ref{lst:leak_demo_c}).
+Prendiamo il codice vulnerabile appena mostrato (Codice~\ref{lst:wrong_fmt}) e aggiungiamo una variabile locale \texttt{local\_secret} che viene allocata nello \emph{stack frame} della funzione \texttt{main} (Codice~\ref{lst:leak_demo_c}).
 Mostriamo, tramite lo sfruttamento della vulnerabilità \emph{format string}, come è possibile vederne il contenuto senza che questo venga passato esplicitamente a \texttt{printf} --- operazione altrimenti non fattibile.
 \begin{lstlisting}[
     language=C,
@@ -93,9 +93,7 @@ Per determinare dove la variabile \texttt{local\_secret} viene collocata esattam
     caption={Estratto del disassemblato di \texttt{main}: posizione di \texttt{local\_secret}},
     label={lst:disas_leak_demo}
 ]
-
-    ; ...
-
+    endbr64
     push   rbp
     mov    rbp, rsp
     sub    rsp, 0x60
@@ -192,6 +190,7 @@ Abbiamo due modi per arrivare a \texttt{local\_secret} (Codice~\ref{lst:leak_int
 La sequenza di specificatori \texttt{\%lx} consuma, uno per uno, gli slot disponibili --- i cinque registri, poi lo stack --- fino a raggiungere \texttt{local\_secret} al settimo, stampato come \texttt{1337}.
 
 Lo specificatore \texttt{\%7\$lx}, usato da solo, referenzia direttamente la settima posizione senza che le prime sei compaiano esplicitamente nella \emph{format string}: è esattamente il caso dei ``buchi'' descritto nella Sezione~\ref{sec:funcvar_format}, che la specifica richiede di evitare \cite{man3printf}. Il meccanismo che risolve la posizione richiesta si comporta però come se, per ciascuna delle sei posizioni non referenziate, fosse stato comunque letto un valore con \texttt{\%lx}. Non è un caso che i due metodi diano lo stesso risultato: entrambi consumano, nello stesso ordine, la stessa sequenza di slot \emph{general-purpose} (i cinque registri, poi lo stack) prima di raggiungere il settimo.\footnote{Se una delle posizioni saltate corrispondesse invece a un valore \emph{floating-point}, questa equivalenza implicita non varrebbe più: il conteggio dei registri \emph{general-purpose} avanzerebbe comunque, ma quello dei registri vettoriali no, disallineando i due contatori (verificato empiricamente).}
+Sfrutteremo questo comportamento anche nelle prossime sezioni per costruire payload compatti, lasciando implicite le posizioni intermedie non referenziate senza più richiamare il meccanismo ogni volta.
 
 Il principio appena dimostrato non dipende dallo specifico specificatore \texttt{\%lx}: qualunque conversione di classe \emph{INTEGER} che non dereferenzi l'argomento (come \texttt{\%x} e \texttt{\%p}) leggerebbe lo stesso registro o la stessa posizione di stack, cambiando solo il modo in cui il valore viene stampato. Lo stesso disallineamento tra specificatori dichiarati e argomenti realmente forniti che abbiamo sfruttato per leggere permette, come vedremo nella Sezione~\ref{sec:mem_write}, anche di scrivere in memoria.
 
@@ -237,7 +236,6 @@ Senza tale protezione, l'indirizzo di \texttt{global\_secret} è fisso ed è pos
     caption={Estratto del disassemblato di \texttt{main}: posizione di \texttt{global\_secret}},
     label={lst:disas_global_secret}
 ]
-
     ; ...
 
     mov    rax,QWORD PTR [rip+0x2e83]  # 404050 <global_secret>
@@ -259,7 +257,7 @@ La posizione di \texttt{buf} deve essere individuata nello stesso modo in cui ab
     caption={Estratto del disassemblato di \texttt{main}: posizione di \texttt{buf} nel programma con \texttt{global\_secret}},
     label={lst:disas_buf_write_demo}
 ]
-    endbr64 
+    endbr64
     push   rbp
     mov    rbp,rsp
     sub    rsp,0x50
@@ -347,31 +345,31 @@ Per effettuare questa operazione, si può utilizzare la libreria \texttt{pwntool
 
     # ...
 \end{lstlisting}
-Il \emph{payload} maligno è costituito da:
+Il \emph{payload} è costituito da:
 \begin{itemize}
     \item \texttt{b`\%4919x'}: stampa parte del contenuto del primo argomento fantasma, riempito di spazi fino ad arrivare a \texttt{4919} caratteri. Questa operazione serve a impostare il contatore dei caratteri stampati per il successivo \texttt{\%ln};
     \item \texttt{b`\%8\$ln'}: scrittura del numero di caratteri stampati finora da \texttt{printf} all'indirizzo presente nell'ottavo argomento fantasma. La posizione 8 non è casuale: \texttt{buf} occupa la posizione 6 e i due specificatori che la precedono nel \emph{payload} (\texttt{\%4919x} e \texttt{\%8\$ln} stessi, 11 byte in tutto) più i 5 byte di padding portano l'indirizzo a occupare la terza \emph{qword} di \texttt{buf} --- cioè, contando da 6, la posizione 8;
     \item \texttt{b`\textbackslash{}x00' * 5}, cinque byte di padding in modo che l'indirizzo inserito sia allineato a 8 byte;
     \item \texttt{p64(0x404050)}: indirizzo impacchettato in \emph{little endian} in 64 bit. Viene inserito alla fine del \emph{payload} perché contiene byte nulli (\texttt{\textbackslash{}x00}): se fosse posizionato prima, la \texttt{printf} li interpreterebbe come fine della stringa e smetterebbe di leggerla.
 \end{itemize}
-Le posizioni 2--7 possono restare non referenziate esplicitamente grazie al meccanismo dei ``buchi'' già visto nella Sezione~\ref{sec:info_disclosure}
 
 Il valore appena scritto --- \texttt{4919} --- è comodo perché richiede di stampare solo qualche migliaio di caratteri prima di \texttt{\%ln}. Un indirizzo di memoria reale può però avere un valore molto più grande: pretendere che \texttt{printf} stampi un numero di caratteri pari al suo valore decimale (anche quindici cifre, per un indirizzo a 64 bit) non è più praticabile. La Sezione~\ref{sec:partial_write} mostra come aggirare il problema scrivendo un valore di queste dimensioni non in un solo colpo, ma attraverso più scritture di dimensione minore.
 
 
 \section{Scritture parziali: scrivere a blocchi di 2 byte con \%hn}\label{sec:partial_write}
-Riprendiamo il Codice~\ref{lst:write_demo_c} con \texttt{global\_secret}. Perciò \texttt{0x404050} corrisponde all'indirizzo di \texttt{global\_secret} e \texttt{buf} è posizionato come prima \emph{qword} a partire da \texttt{rsp}, corrispondente quindi al sesto specificatore della \emph{format string}.
+Riprendiamo il Codice~\ref{lst:write_demo_c}: \texttt{0x404050} è ancora l'indirizzo di \texttt{global\_secret} e \texttt{buf} è posizionato come prima \emph{qword} a partire da \texttt{rsp}, corrispondente quindi al sesto specificatore della \emph{format string}.
 
-L'obiettivo è sempre sovrascrivere la variabile globale, ma questa volta con il valore \texttt{0xdeadbeef} invece di \texttt{0x1337}. Dato che siamo sull'ordine di grandezza del miliardo, lo scriveremo con due scritture parziali da 2 byte ciascuna, tramite \texttt{\%hn}, invece che con un'unica scrittura da 8 byte (\texttt{\%ln}).
+L'obiettivo è sempre sovrascrivere la variabile globale, ma questa volta con il valore \texttt{0xdeadbeef} invece di \texttt{0x1337}. Dato che siamo sull'ordine di grandezza del miliardo, lo scriviamo tramite \texttt{\%hn}, con due scritture parziali da 2 byte, invece che con un'unica scrittura da 8 byte tramite \texttt{\%ln}.
+
 Il modificatore \texttt{h} (Sezione~\ref{sec:funcvar_format}) fa interpretare l'argomento di \texttt{\%n} come un puntatore a un valore di 2 byte. Per scrivere \texttt{0xdeadbeef}, che occupa 4 byte, servono dunque due scritture da 2 byte ciascuna.
 
-\texttt{global\_secret} resta comunque una variabile di 8 byte: le due scritture da 2 byte coprono solo i 4 byte meno significativi, lasciando formalmente indeterminati i 4 byte più significativi. In generale andrebbero azzerati con un'ulteriore scrittura, però, in questo caso non serve poiché \texttt{global\_secret} è inizializzata a \texttt{0} (Codice~\ref{lst:write_demo_c}) e quei 4 byte sono quindi già azzerati.
+\texttt{global\_secret} resta comunque una variabile di 8 byte: le due scritture da 2 byte coprono solo i 4 byte meno significativi, lasciando formalmente indeterminati i 4 byte più significativi. In generale andrebbero azzerati con un'ulteriore scrittura; non è però necessario in questo caso poiché \texttt{global\_secret} è inizializzata a \texttt{0} (Codice~\ref{lst:write_demo_c}) e quei 4 byte sono quindi già azzerati.
 
-Per via del fatto che l'ambiente di riferimento (Tabella~\ref{tab:ambiente_riferimento}) ha l'ordine dei byte in \emph{little endian}, i 2 byte meno significativi di \texttt{0xdeadbeef}, ovvero \texttt{0xbeef}, vanno scritti all'indirizzo più basso, cioè \texttt{0x404050}, l'indirizzo di \texttt{global\_secret} già individuato nella Sezione~\ref{sec:mem_write}. I 2 byte più significativi, ovvero \texttt{0xdead}, vanno invece scritti 2 byte più avanti, a \texttt{0x404050 + 2}.
+Poiché l'ambiente di riferimento (Tabella~\ref{tab:ambiente_riferimento}) ha l'ordine dei byte in \emph{little endian}, i 2 byte meno significativi di \texttt{0xdeadbeef}, ovvero \texttt{0xbeef}, vanno scritti all'indirizzo più basso: \texttt{0x404050}, l'indirizzo di \texttt{global\_secret} già individuato nella Sezione~\ref{sec:mem_write}. I 2 byte più significativi, ovvero \texttt{0xdead}, vanno invece scritti 2 byte più avanti, a \texttt{0x404050 + 2}.
 
-Inoltre, trattandosi di un'unica chiamata a \texttt{printf}, il contatore dei caratteri stampati può solo crescere, quindi le due scritture vanno ordinate per valore, non per indirizzo. Tra \texttt{0xbeef} (\texttt{48879} in decimale) e \texttt{0xdead} (\texttt{57005}), il primo è più piccolo e va scritto per primo.
+Inoltre, trattandosi di un'unica chiamata a \texttt{printf}, il contatore dei caratteri stampati può solo crescere, quindi le due scritture vanno ordinate per valore, non per indirizzo. Tra \texttt{0xbeef} (\texttt{48879} in decimale) e \texttt{0xdead} (\texttt{57005}), il primo è più piccolo e va scritto per primo. 
 
-Vediamo l'estratto \texttt{Python} per la scrittura parziale e analizziamo come è costruito il payload (Codice~\ref{lst:python_partial_write}).
+Vediamo l'estratto Python per la scrittura parziale e analizziamo come è costruito il \emph{payload} (Codice~\ref{lst:python_partial_write}).
 \begin{lstlisting}[
     language={Python},
     numbers=none,
@@ -385,21 +383,22 @@ Vediamo l'estratto \texttt{Python} per la scrittura parziale e analizziamo come 
                 + b'%8126x' + b'%11$hn' \
                 + b'\x00' * 7 \
                 + p64(0x404050) \
-                + p64(0x404050 + 2)            
+                + p64(0x404050 + 2)
     io.sendline(payload)
 
     # ...
 \end{lstlisting}
-
-Il payload è costituito da:
+Il \emph{payload} è costituito da:
 \begin{itemize}
-    \item \texttt{b`\%48879x'} + \texttt{b`\%10\$hn'}: il padding porta il contatore di caratteri stampati a \texttt{48879} (\texttt{0xbeef}) e \texttt{\%10\$hn} scrive quel valore all'indirizzo contenuto nel decimo argomento fantasma, \texttt{0x404050}.
-    \item \texttt{b`\%8126x'} + \texttt{b`\%11\$hn'}: altri \texttt{8126} caratteri portano il contatore a \texttt{57005} (\texttt{0xdead}) e \texttt{\%11\$hn} scrive questo secondo valore all'indirizzo presente nell'undicesimo argomento fantasma, \texttt{0x404050 + 2}.
-    \item \texttt{b'\textbackslash{}x00' * 7}: byte di riempimento per allineare i due indirizzi a 8 byte all'interno di \texttt{buf}, per lo stesso motivo della Sezione~\ref{sec:mem_write}.
+    \item \texttt{b`\%48879x'} + \texttt{b`\%10\$hn'}: il padding porta il contatore di caratteri stampati a \texttt{48879} (\texttt{0xbeef}) e \texttt{\%10\$hn} scrive quel valore all'indirizzo contenuto nel decimo argomento fantasma, \texttt{0x404050};
+    \item \texttt{b`\%8126x'} + \texttt{b`\%11\$hn'}: altri \texttt{8126} caratteri portano il contatore a \texttt{57005} (\texttt{0xdead}) e \texttt{\%11\$hn} scrive questo secondo valore all'indirizzo presente nell'undicesimo argomento fantasma, \texttt{0x404050 + 2};
+    \item \texttt{b`\textbackslash{}x00' * 7}: byte di riempimento per allineare i due indirizzi a 8 byte all'interno di \texttt{buf}, per lo stesso motivo della Sezione~\ref{sec:mem_write};
     \item \texttt{p64(0x404050)} e \texttt{p64(0x404050 + 2)}: i due indirizzi per le scritture parziali.
 \end{itemize}
-La posizione usata per ciascun indirizzo è sempre ricavata contando i byte: \texttt{buf} occupa la posizione 6, e i quattro specificatori di testo del payload (\texttt{\%48879x}, \texttt{\%10\$hn}, \texttt{\%8126x}, \texttt{\%11\$hn}, 25 byte in tutto) più 7 byte di allineamento portano i due indirizzi a occupare la quinta e la sesta \emph{qword} di \texttt{buf}, cioè le posizioni 10 e 11 (Codice~\ref{lst:python_partial_write}).
+La posizione usata per ciascun indirizzo è sempre ricavata contando i byte: \texttt{buf} occupa la posizione 6, e i quattro specificatori di testo del \emph{payload} (\texttt{\%48879x}, \texttt{\%10\$hn}, \texttt{\%8126x}, \texttt{\%11\$hn}, 25 byte in tutto) più 7 byte di allineamento portano i due indirizzi a occupare la quinta e la sesta \emph{qword} di \texttt{buf}, cioè le posizioni 10 e 11 (Codice~\ref{lst:python_partial_write}).
 
 Al termine, \texttt{global\_secret} vale \texttt{0x00000000deadbeef}: le due scritture parziali compongono \texttt{0xdeadbeef} nella metà bassa, mentre la metà alta resta a \texttt{0} per l'inizializzazione del Codice~\ref{lst:write_demo_c}.
 
-È possibile fare scritture parziali anche con \texttt{\%hhn}. La dimensione di queste scritture sarà ancora minore, ovvero di 1 byte ciascuno, ma il procedimento è lo stesso di quello visto per \texttt{\%hn}.
+È possibile fare scritture parziali anche con \texttt{\%hhn}. La dimensione di queste scritture è ancora minore, ovvero di 1 byte ciascuno, ma il procedimento è lo stesso di quello visto per \texttt{\%hn}.
+
+Le tecniche di lettura e scrittura sono state finora mostrate separatamente, e la scrittura si è appoggiata a un indirizzo reso fisso disattivando la protezione PIE. Il Capitolo 3 le combina in un unico \emph{exploit}, contro un programma dove PIE resta attivo: la lettura ricava a runtime l'indirizzo che PIE avrebbe altrimenti randomizzato, e la scrittura lo sfrutta per completare l'attacco.
