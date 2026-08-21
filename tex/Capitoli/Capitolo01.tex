@@ -21,14 +21,14 @@ L'ellissi \texttt{...} indica che il numero e il tipo di questi argomenti posson
 
 Per le funzioni variadiche, il numero e il tipo degli argomenti che seguono l'ultimo parametro dichiarato non sono determinabili dalla sola dichiarazione della funzione. È quindi compito del programmatore definire una convenzione che il chiamante rispetti, per comunicare in qualche altro modo quanti argomenti sono stati passati. È possibile:
 \begin{itemize}
-    \item utilizzare una \emph{format string} che indichi il numero e il tipo dei parametri (ad es. la \emph{format string} di \texttt{printf});
+    \item utilizzare una format string che indichi il numero e il tipo dei parametri (ad es. la format string di \texttt{printf});
     \item passare il numero come argomento fisso;
     \item terminare la lista degli argomenti aggiuntivi con un valore speciale (sentinella).
 \end{itemize}
 
 L'altro aspetto rilevante delle funzioni variadiche è che gli argomenti catturati dall'ellissi non corrispondono ad alcun parametro nominato: non è quindi possibile accedervi per nome, come si farebbe con un parametro ordinario, ma serve un meccanismo diverso \cite{kr1988}.
 
-Per inquadrare il funzionamento della \emph{format string} e il modo in cui le funzioni variadiche scorrono la lista degli argomenti aggiuntivi, guardiamo \texttt{minprintf} (Codice~\ref{lst:minprintf}), una versione molto semplificata di \texttt{printf} \cite{kr1988}.
+Per inquadrare il funzionamento della format string e il modo in cui le funzioni variadiche scorrono la lista degli argomenti aggiuntivi, guardiamo \texttt{minprintf} (Codice~\ref{lst:minprintf}), una versione molto semplificata di \texttt{printf} \cite{kr1988}.
 \begin{lstlisting}[
     language=C,
     gobble=4,
@@ -60,16 +60,16 @@ Per inquadrare il funzionamento della \emph{format string} e il modo in cui le f
     }
 \end{lstlisting}
 
-Per gestire gli argomenti aggiuntivi, il linguaggio C ci fornisce l'\emph{header} standard \texttt{<stdarg.h>}, contenente un insieme di definizioni di macro che stabiliscono come avanzare all'interno di una lista di argomenti.
+Per gestire gli argomenti aggiuntivi, il linguaggio C ci fornisce l'header standard \texttt{<stdarg.h>}, contenente un insieme di definizioni di macro che stabiliscono come avanzare all'interno di una lista di argomenti.
 Il tipo \texttt{va\_list} viene utilizzato per dichiarare una variabile che fa riferimento, uno dopo l'altro, a ciascuno degli argomenti aggiuntivi anonimi; in \texttt{minprintf}, questa variabile è chiamata \texttt{ap}, che sta per ``argument pointer''. La macro \texttt{va\_start} inizializza \texttt{ap} facendolo puntare al primo argomento senza nome. Questa macro deve essere invocata una volta prima di poter utilizzare \texttt{ap}. È necessaria la presenza di almeno un argomento con nome; l'ultimo di questi argomenti viene utilizzato da \texttt{va\_start} come punto di partenza.
 
 Ogni chiamata a \texttt{va\_arg} restituisce un argomento e fa avanzare \texttt{ap} a quello successivo; \texttt{va\_arg} utilizza il nome del tipo per determinare quale tipo di dato restituire e l'entità del passo da compiere per avanzare. Infine, \texttt{va\_end} si occupa di eseguire le eventuali operazioni di pulizia necessarie. Deve essere chiamata prima che la funzione termini \cite{kr1988}.
 
 \begin{defn}[Specificatore di formato]\label{def:specificatore}
-    Uno \textbf{specificatore di formato} è una sottosequenza della \emph{format string}, introdotta dal carattere \%, che stabilisce se e come un argomento aggiuntivo debba essere interpretato e restituito nell'output prodotto \cite{cplusplusprintf}.
+    Uno \textbf{specificatore di formato} è una sottosequenza della format string, introdotta dal carattere \%, che stabilisce se e come un argomento aggiuntivo debba essere interpretato e restituito nell'output prodotto \cite{cplusplusprintf}.
 \end{defn}
 
-La funzione \texttt{minprintf} stampa sullo standard output (\texttt{stdout}) la stringa indicata da \texttt{fmt}. Qualora quest'ultima contenga degli specificatori di formato, gli argomenti successivi vengono opportunamente formattati e sostituiti al loro posto prima della stampa \cite{cplusplusprintf}. Tale meccanismo ricalca il tipico comportamento delle \emph{format string}.
+La funzione \texttt{minprintf} stampa sullo standard output (\texttt{stdout}) la stringa indicata da \texttt{fmt}. Qualora quest'ultima contenga degli specificatori di formato, gli argomenti successivi vengono opportunamente formattati e sostituiti al loro posto prima della stampa \cite{cplusplusprintf}. Tale meccanismo ricalca il tipico comportamento delle format string.
 
 Il principio di \texttt{printf} della libreria standard è identico; l'aspetto che cambia principalmente è la ricchezza dello specificatore di formato, che infatti ha la seguente struttura (Codice~\ref{lst:format_specifier_syntax}) \cite{man3printf,cplusplusprintf}:
 \begin{lstlisting}[
@@ -83,7 +83,7 @@ Il principio di \texttt{printf} della libreria standard è identico; l'aspetto c
 \end{lstlisting}
 Per il nostro scopo sono rilevanti:
 \begin{itemize}
-    \item \emph{posizione} (\texttt{n\$}), permette di indicare esplicitamente quale argomento della lista debba essere formattato, anziché consumare implicitamente il successivo non ancora utilizzato (ad es. \texttt{\%3\$x} formatta come esadecimale il terzo argomento dopo \texttt{fmt}). Non fa parte dello standard C, ma è un'estensione POSIX; la sua disponibilità dipende quindi dalla libreria C effettivamente linkata, non dal linguaggio in sé. Se si adotta questo stile, la specifica richiede inoltre che ogni posizione fino alla più alta usata compaia almeno una volta nella \emph{format string}, senza ``buchi'' \cite{man3printf}.
+    \item \emph{posizione} (\texttt{n\$}), permette di indicare esplicitamente quale argomento della lista debba essere formattato, anziché consumare implicitamente il successivo non ancora utilizzato (ad es. \texttt{\%3\$x} formatta come esadecimale il terzo argomento dopo \texttt{fmt}). Non fa parte dello standard C, ma è un'estensione POSIX; la sua disponibilità dipende quindi dalla libreria C effettivamente linkata, non dal linguaggio in sé. Se si adotta questo stile, la specifica richiede inoltre che ogni posizione fino alla più alta usata compaia almeno una volta nella format string, senza ``buchi'' \cite{man3printf}.
     \item \emph{larghezza}, il numero minimo di caratteri da stampare. Se il valore da stampare è più corto di questo numero, il risultato viene riempito con spazi vuoti. Il valore non viene troncato, nemmeno se risulta più lungo.
     \item \emph{lunghezza}, modifica la dimensione del tipo di dato. Noi useremo:
         \begin{itemize}
@@ -102,7 +102,7 @@ Per il nostro scopo sono rilevanti:
 
 
 \section{La calling convention x86\_64}\label{sec:callconv}
-Analizziamo la vulnerabilità \emph{format string} in particolare per l'architettura x86\_64, nota anche come AMD64. Ci interessano le convenzioni utilizzate da tale architettura durante la chiamata di funzione, in particolare dove vengono memorizzati gli argomenti passati alla funzione (ci servirà quando andremo a sfruttare la vulnerabilità).
+Analizziamo la vulnerabilità format string in particolare per l'architettura x86\_64, nota anche come AMD64. Ci interessano le convenzioni utilizzate da tale architettura durante la chiamata di funzione, in particolare dove vengono memorizzati gli argomenti passati alla funzione (ci servirà quando andremo a sfruttare la vulnerabilità).
 
 \subsection{System V AMD64 ABI: registri per il passaggio dei parametri}\label{subsec:sysv_registri}
 \begin{defn}[ABI]\label{def:abi}
@@ -113,15 +113,15 @@ Tra i molti dettagli di basso livello specificati da un'ABI, quello che riguarda
 
 Gli argomenti delle funzioni vengono suddivisi in diverse categorie, mappate sulle specifiche famiglie di registri dell'architettura AMD64. Quelli rilevanti ai fini della trattazione della nostra vulnerabilità appartengono alla classe \emph{INTEGER}, costituita dai tipi interi che possono essere contenuti all'interno di uno dei registri \emph{general-purpose} (registri di uso generale).
 
-I tipi base (con segno e senza segno) appartenenti alla classe \emph{INTEGER} sono: \texttt{\_Bool}, \texttt{char}, \texttt{short}, \texttt{int}, \texttt{long}, \texttt{long long} e puntatori.
+I tipi base (con segno e senza segno) appartenenti alla classe INTEGER sono: \texttt{\_Bool}, \texttt{char}, \texttt{short}, \texttt{int}, \texttt{long}, \texttt{long long} e puntatori.
 La dimensione di ciascun argomento viene arrotondata per eccesso a otto byte. Di conseguenza, lo stack risulta sempre allineato a otto byte \cite{psabi2025}.
 
-Per gli argomenti di classe \emph{INTEGER}, il passaggio avviene assegnandoli da sinistra verso destra al primo registro disponibile nella sequenza: \texttt{\%rdi}, \texttt{\%rsi}, \texttt{\%rdx}, \texttt{\%rcx}, \texttt{\%r8}, \texttt{\%r9} (Tabella~\ref{tab:registri_integer}).
+Per gli argomenti di classe INTEGER, il passaggio avviene assegnandoli da sinistra verso destra al primo registro disponibile nella sequenza: \texttt{\%rdi}, \texttt{\%rsi}, \texttt{\%rdx}, \texttt{\%rcx}, \texttt{\%r8}, \texttt{\%r9} (Tabella~\ref{tab:registri_integer}).
 Completata questa assegnazione ai registri, gli argomenti rimanenti (destinati alla memoria) vengono inseriti nello stack in ordine inverso, ovvero da destra verso sinistra \cite{psabi2025}.
 
 \begin{table}[ht]
     \centering
-    \caption{Registro assegnato a ciascuna posizione per gli argomenti di classe \emph{INTEGER}}
+    \caption{Registro assegnato a ciascuna posizione per gli argomenti di classe INTEGER}
     \label{tab:registri_integer}
     \begin{tabular}{cc}
         \toprule
@@ -140,10 +140,10 @@ Completata questa assegnazione ai registri, gli argomenti rimanenti (destinati a
 \end{table}
 
 \subsection{Il caso delle funzioni variadiche}\label{subsec:funvar_cc}
-Le funzioni standard, a parametri fissi, applicano la \emph{calling convention} senza difficoltà, poiché conoscono in anticipo numero e tipo degli argomenti che vengono loro passati, e sanno dunque già dove reperirli.
+Le funzioni standard, a parametri fissi, applicano la calling convention senza difficoltà, poiché conoscono in anticipo numero e tipo degli argomenti che vengono loro passati, e sanno dunque già dove reperirli.
 
 Le funzioni variadiche, invece, non sanno in anticipo quanti argomenti riceveranno, né se si trovino nei registri o sullo stack.
-Come visto nella Sezione~\ref{sec:funcvar_format}, le funzioni variadiche gestiscono gli argomenti aggiuntivi tramite l'\emph{header} \texttt{<stdarg.h>}, come se fossero una lista. Però non abbiamo specificato l'implementazione di questa lista, che dipende dalla ABI effettivamente in uso. Vediamo dunque come \texttt{<stdarg.h>} sia implementato concretamente secondo la System V AMD64 ABI.
+Come visto nella Sezione~\ref{sec:funcvar_format}, le funzioni variadiche gestiscono gli argomenti aggiuntivi tramite l'header \texttt{<stdarg.h>}, come se fossero una lista. Però non abbiamo specificato l'implementazione di questa lista, che dipende dalla ABI effettivamente in uso. Vediamo dunque come \texttt{<stdarg.h>} sia implementato concretamente secondo la System V AMD64 ABI.
 
 I primi argomenti interi vengono passati nei sei registri elencati nella Tabella~\ref{tab:registri_integer}. 
 Il problema è che \texttt{<stdarg.h>} naviga gli argomenti tramite indirizzi di memoria, ma un registro non ha un indirizzo a cui puntare, a differenza di un argomento già spostato sullo stack.
@@ -156,7 +156,7 @@ La soluzione è quella di mettere, nel prologo delle funzioni variadiche, del co
 
 \begin{table}[ht]
     \centering
-    \caption{Offset dei registri per gli argomenti nella \emph{register save area}}
+    \caption{Offset dei registri per gli argomenti nella register save area}
     \label{tab:register_save_area}
     \begin{tabular}{cc}
         \toprule
@@ -175,9 +175,9 @@ La soluzione è quella di mettere, nel prologo delle funzioni variadiche, del co
 \end{table}
 
 Devono essere salvati solo i registri che potrebbero essere utilizzati per passare gli argomenti. 
-Una funzione variadica chiamata non sa quanti registri \emph{general-purpose} verranno popolati.
+Una funzione variadica chiamata non sa quanti registri general-purpose verranno popolati.
 \footnote{Un problema analogo riguarda i registri vettoriali \texttt{\%xmm0}--\texttt{\%xmm7}, usati per gli argomenti \emph{floating-point}. La System V AMD64 ABI, però, risolve il caso diversamente: prima di ogni chiamata potenzialmente variadica, il chiamante imposta \texttt{\%al} (il byte basso di \texttt{\%rax}) a un valore fra 0 e 8, che il prologo usa come limite superiore --- non necessariamente esatto --- al numero di registri vettoriali da salvare, evitando così di inizializzare inutilmente l'unità XMM \cite{psabi2025}.}
-Di conseguenza, per non perdere potenziali dati validi, il prologo è obbligato a salvare sempre tutti e sei i registri \emph{general-purpose} destinati al passaggio dei parametri all'interno della \emph{register save area} sullo stack \cite{psabi2025}.
+Di conseguenza, per non perdere potenziali dati validi, il prologo è obbligato a salvare sempre tutti e sei i registri general-purpose destinati al passaggio dei parametri all'interno della register save area sullo stack \cite{psabi2025}.
 
 Il tipo \texttt{va\_list} (Codice~\ref{lst:va_list}) è un array di un solo elemento di tipo \texttt{struct}, contenente le informazioni necessarie per permettere alla macro \texttt{va\_arg} di estrarre l'argomento successivo correttamente \cite{psabi2025}. È compito della macro \texttt{va\_start} inizializzare questa \texttt{struct}.
 \begin{lstlisting}[
@@ -197,9 +197,9 @@ Il tipo \texttt{va\_list} (Codice~\ref{lst:va_list}) è un array di un solo elem
 
 Esaminiamo le componenti di \texttt{va\_list} \cite{psabi2025}:
 \begin{itemize}
-    \item \texttt{reg\_save\_area}: puntatore all'inizio della \emph{register save area}.
+    \item \texttt{reg\_save\_area}: puntatore all'inizio della register save area.
 
-    \item \texttt{gp\_offset}: contiene l'offset in byte, a partire da \texttt{reg\_save\_area}, del punto in cui è salvato il successivo registro \emph{general-purpose} disponibile. Nel caso in cui tutti i registri di argomento siano esauriti, viene impostato al valore 48 ($6 \times 8$).
+    \item \texttt{gp\_offset}: contiene l'offset in byte, a partire da \texttt{reg\_save\_area}, del punto in cui è salvato il successivo registro general-purpose disponibile. Nel caso in cui tutti i registri di argomento siano esauriti, viene impostato al valore 48 ($6 \times 8$).
 
     \item \texttt{fp\_offset}: contiene l'offset in byte, a partire da \texttt{reg\_save\_area}, del punto in cui è salvato il successivo registro vettoriale disponibile. Nel caso in cui tutti i registri di argomento siano esauriti, viene impostato al valore 176 ($6 \times 8 + 8 \times 16$).
 
@@ -215,13 +215,13 @@ Una volta accertata l'idoneità, viene verificata la disponibilità dei registri
 \end{itemize}
 Alla fine di ogni chiamata, vengono aggiornati i relativi offset presenti in \texttt{va\_list} in base ai registri utilizzati o allo spazio consumato nello stack \cite{psabi2025}.
 
-Analizziamo ora come questi meccanismi si applichino al caso specifico \texttt{printf}. La funzione variadica \texttt{printf} possiede la \emph{format string} come unico parametro fisso. Tale argomento occupa quindi il primo registro \emph{general-purpose} disponibile, ovvero \texttt{\%rdi}. Gli eventuali argomenti aggiuntivi occupano i successivi registri o lo stack, in base al loro tipo e numero.
+Analizziamo ora come questi meccanismi si applichino al caso specifico \texttt{printf}. La funzione variadica \texttt{printf} possiede la format string come unico parametro fisso. Tale argomento occupa quindi il primo registro general-purpose disponibile, ovvero \texttt{\%rdi}. Gli eventuali argomenti aggiuntivi occupano i successivi registri o lo stack, in base al loro tipo e numero.
 
-Se al chiamato viene passata esclusivamente la \emph{format string} senza ulteriori argomenti, il prologo della funzione provvede comunque a salvare il contenuto (potenzialmente indefinito) dei restanti cinque registri \emph{general-purpose} all'interno della \emph{register save area}.
+Se al chiamato viene passata esclusivamente la format string senza ulteriori argomenti, il prologo della funzione provvede comunque a salvare il contenuto (potenzialmente indefinito) dei restanti cinque registri general-purpose all'interno della register save area.
 
-Qualora la \emph{format string} contenesse degli specificatori (ad es. \texttt{\%x} o \texttt{\%p}), la libreria richiamerebbe iterativamente \texttt{va\_arg}, andando a leggere il contenuto di quei registri che, di fatto, non corrispondono ad alcun argomento reale. Per questo motivo, ai fini di questa trattazione, possiamo riferirci a questi valori con il termine informale di ``argomenti fantasma'' (ovvero dati residui di precedenti operazioni trattati erroneamente come parametri validi).
+Qualora la format string contenesse degli specificatori (ad es. \texttt{\%x} o \texttt{\%p}), la libreria richiamerebbe iterativamente \texttt{va\_arg}, andando a leggere il contenuto di quei registri che, di fatto, non corrispondono ad alcun argomento reale. Per questo motivo, ai fini di questa trattazione, possiamo riferirci a questi valori con il termine informale di ``argomenti fantasma'' (ovvero dati residui di precedenti operazioni trattati erroneamente come parametri validi).
 Se, inoltre, la stringa contenesse un numero di specificatori tale da esaurire i registri disponibili, \texttt{va\_arg} proseguirebbe la lettura, andando a prelevare ulteriori ``argomenti fantasma'', direttamente dallo stack.
-Vedremo nel Capitolo~\ref{chapter:fmt_vuln} come questo comportamento permetta a un attaccante di ottenere la lettura e la scrittura di locazioni di memoria arbitrarie, gettando le basi teoriche per lo sfruttamento delle vulnerabilità di tipo \emph{format string}.
+Vedremo nel Capitolo~\ref{chapter:fmt_vuln} come questo comportamento permetta a un attaccante di ottenere la lettura e la scrittura di locazioni di memoria arbitrarie, gettando le basi teoriche per lo sfruttamento delle vulnerabilità di tipo format string.
 
 
 \section{Ambiente e strumenti}\label{sec:env_tools}
@@ -255,6 +255,6 @@ Questi strumenti ci servono per analizzare il binario vulnerabile e crearci uno 
     \item \texttt{pwn checksec}, per controllare le impostazioni di sicurezza del binario;
     \item \texttt{objdump}, per il disassemblaggio e l'ispezione a basso livello del binario;
     \item \texttt{Ghidra}, \emph{Software Reverse Engineering} (SRE) Framework per analizzare codice compilato (include funzionalità di disassemblaggio e decompilazione) \cite{ghidra};
-    \item \texttt{pwndbg}, plugin per \texttt{GDB} per il \emph{debugging} del binario;
-    \item \texttt{pwntools}, libreria di sviluppo per gli \emph{exploit} scritta in Python, per creare quello che andrà a sfruttare il binario vulnerabile \cite{pwntools}.
+    \item \texttt{pwndbg}, plugin per \texttt{GDB} per il debugging del binario;
+    \item \texttt{pwntools}, libreria di sviluppo per gli exploit scritta in Python, per creare quello che andrà a sfruttare il binario vulnerabile \cite{pwntools}.
 \end{itemize}
