@@ -227,7 +227,8 @@ Lo specificatore \texttt{\%n}, come gli altri, fa riferimento a un argomento ---
 Di conseguenza, è necessario conoscere l'indirizzo di \texttt{global\_secret} e inserirlo in \texttt{buf} in modo che sia allineato a 8 byte affinché \texttt{\%n} vi possa fare riferimento in modo corretto. Inoltre occorre sapere la posizione di \texttt{buf} per conoscere l'indice posizionale da assegnare allo specificatore.
 
 Nell'ambiente di riferimento (Tabella~\ref{tab:ambiente_riferimento}) il sorgente viene compilato di default con la protezione PIE (\emph{Position Independent Executable}), che rende possibile che il file binario venga caricato in indirizzi di memoria differenti a ogni esecuzione. Pertanto anche l'indirizzo di \texttt{global\_secret}, essendo una variabile globale, cambia a ogni esecuzione.
-Sfruttando la vulnerabilità format string è comunque possibile ricavarlo dinamicamente. Per semplicità però, in questo esempio viene disabilitata la protezione PIE. \footnote{Per disabilitare la protezione PIE, è necessario compilare il sorgente con le opzioni \texttt{-fno-pie} e \texttt{-no-pie}.}
+Per mostrare in modo diretto la scrittura di \texttt{global\_secret}, conviene lavorare con un indirizzo noto in anticipo. Quindi per semplicità, in questo esempio viene disabilitata la protezione PIE.
+\footnote{Per disabilitare la protezione PIE, è necessario compilare il sorgente con le opzioni \texttt{-fno-pie} e \texttt{-no-pie}.}
 Senza tale protezione, l'indirizzo di \texttt{global\_secret} è fisso ed è possibile individuarlo esaminando il disassemblato (Codice~\ref{lst:disas_global_secret}).
 \begin{lstlisting}[
     language={},
@@ -401,4 +402,5 @@ Al termine, \texttt{global\_secret} vale \texttt{0x00000000deadbeef}: le due scr
 
 È possibile fare scritture parziali anche con \texttt{\%hhn}. La dimensione di queste scritture è ancora minore, ovvero di 1 byte ciascuno, ma il procedimento è lo stesso di quello visto per \texttt{\%hn}.
 
-Le tecniche di lettura e scrittura sono state finora mostrate separatamente, e la scrittura si è appoggiata a un indirizzo reso fisso disattivando la protezione PIE. Il Capitolo 3 le combina in un unico \emph{exploit}, contro un programma dove PIE resta attivo: la lettura ricava a runtime l'indirizzo che PIE avrebbe altrimenti randomizzato, e la scrittura lo sfrutta per completare l'attacco.
+Le tecniche di lettura e scrittura sono state finora mostrate separatamente, e la scrittura si è appoggiata a un indirizzo reso fisso disattivando la protezione PIE. 
+Il Capitolo~\ref{chapter:exploit} le combina in un unico \emph{exploit}, contro un nuovo programma dove PIE resta attivo: la lettura ricava a runtime l'indirizzo che PIE avrebbe altrimenti randomizzato, e la scrittura lo sfrutta per completare l'attacco.
