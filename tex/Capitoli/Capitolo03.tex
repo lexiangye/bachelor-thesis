@@ -1,7 +1,86 @@
 \chapter{Sviluppo pratico di un exploit}\label{chapter:exploit}
 Finora abbiamo avuto sempre il codice sorgente disponibile. Nel mondo reale però, ci potrebbero essere servizi che non forniscono né il codice sorgente e nemmeno il file binario compilato, ma solamente l'interazione con esso. 
-L'attaccante si trova quindi in uno scenario di tipo \emph{black-box}. Di base non sa come sia scritto il programma, può solo fornirgli input e studiarne l'output o il comportamento.
+L'attaccante si trova quindi in uno scenario di tipo \emph{black-box}: non sa come sia scritto il programma, può solo fornirgli input e studiarne l'output o il comportamento.
 
 Nel caso però, l'attaccante entrasse in possesso anche solo del binario, è possibile, tramite gli strumenti elencati nella Sottosezione~\ref{subsec:tools}, ottenere informazioni estremamente utili tra cui: architettura, formato del file, impostazioni di sicurezza, disassemblato e decompilato (pseudocodice simile al linguaggio originale).
 
-Tali informazioni rendono possibile la ricostruzione e la comprensione della logica del programma e quindi rende possibile l'analisi di eventuali vulnerabilità. Questo è ciò che tratta questo capitolo: l'analisi un file binario, la ricerca di vulnerabilità e infine la scrittura di uno uno script Python che sfrutta tale vulnerabilità mettendo in uso le tecniche spiegate nel Capitolo~\ref{chapter:fmt_vuln}.
+Tali informazioni rendono possibile la ricostruzione e la comprensione della logica del programma e quindi rende possibile l'analisi di eventuali vulnerabilità. Questo è ciò che tratta questo capitolo: l'analisi un file binario, la ricerca di vulnerabilità e infine la scrittura di uno script Python che sfrutta tale vulnerabilità mettendo in uso le tecniche spiegate nel Capitolo~\ref{chapter:fmt_vuln}.
+
+\section{Analisi del programma vulnerabile}\label{sec:vuln_service}
+È necessario ottenere informazioni sul binario, di cui non sappiamo praticamente niente.
+Il comando \texttt{file} permette di ricavare il formato del binario e la sua architettura (Codice~\ref{lst:file_output}) che saranno rispettivamente \texttt{ELF} e \texttt{x86\_64} poiché il binario è stato compilato con \texttt{gcc} nell'ambiente di riferimento in Tabella~\ref{tab:ambiente_riferimento}.
+\begin{lstlisting}[
+    language={},
+    numbers=none,
+    gobble=4,
+    caption={Output del comando \texttt{file} sul binario},
+    label={lst:file_output}
+]
+    ELF 64-bit LSB pie executable, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, BuildID[sha1]=7ca3fa01f2fa3cb0724cdc1743f15aaa7474b0f4, for GNU/Linux 3.2.0, not stripped
+\end{lstlisting}
+
+Tipicamente i binari vengono compilati con l'opzione \texttt{-s} (\emph{strip}) che rimuove tutte le tabelle dei simboli e le informazioni di debug dal file eseguibile finale, che oltre a ridurre le dimensioni del file, lo protegge rendendolo poco comprensibile. Per semplicità però, il binario in questo capitolo è stato compilato senza tale opzione. Vediamo infatti ``\emph{not stripped}'' (Codice~\ref{lst:file_output}).
+
+Altra informazione essenziale sono le impostazioni di sicurezza del binario che vengono ricavate dal comando \texttt{pwn checksec} (Codice~\ref{lst:checksec_output}).
+\begin{lstlisting}[
+    language={},
+    numbers=none,
+    gobble=4,
+    caption={Output del comando \texttt{pwn checksec} sul binario},
+    label={lst:checksec_output}
+]
+    Arch:       amd64-64-little
+    RELRO:      Full RELRO
+    Stack:      Canary found
+    NX:         NX enabled
+    PIE:        PIE enabled
+    SHSTK:      Enabled
+    IBT:        Enabled
+    Stripped:   No
+\end{lstlisting}
+Tale configurazione è il default del compilatore \texttt{gcc} nel nostro ambiente (Tabella~\ref{tab:ambiente_riferimento}).
+
+I due comandi \texttt{file} e \texttt{pwn checksec} permettono una prima comprensione del binario in questione: viene inquadrato il tipo di disassemblato che si ottiene, convenzioni utilizzate, e che protezioni abbiamo davanti.
+Sono informazioni rilevanti ma non dicono niente della logica del codice. Per comprendere il codice è necessario analizzare il disassemblato e il decompilato. Per questo compito, lo strumento \texttt{Ghidra} si comporta bene.
+
+Il codice decompilato è un tentativo di ricostruire la logica e la struttura del programma originale esaminando il codice Assembly (il disassemblato). Tale ricostruzione però è spesso confusionaria e va sistemata per renderlo più comprensibile (Codice~\ref{lst:ghidra_decompiled}).
+\begin{lstlisting}[
+    language={C},
+    numbers=none,
+    gobble=4,
+    caption={Estratto del decompilato di \texttt{Ghidra} sistemato},
+    label={lst:ghidra_decompiled}
+]
+    int main(void) {
+        char buf[64];
+
+        // ...
+        puts("=== MiniLog v1.0 ===");
+        while (fgets(buf, 64, stdin) != NULL) {
+            log_message(buf);
+        }
+        // ...
+        return 0;
+    }
+
+    void log_message(char *msg) {
+        printf(msg);
+        return;
+    }
+
+    void debug_shell(void) {
+        system("/bin/sh");
+        return;
+    }
+\end{lstlisting}
+Il programma è una sorta di MiniLog che va a stampare in \texttt{stdout} tutto quello che viene scritto su \texttt{stdin}. Il problema sono le due funzioni \texttt{log\_message} e \texttt{debug\_shell}.
+
+All'interno di \texttt{log\_message} è presente \texttt{printf(msg)} con \texttt{msg} controllata dall'utente e quindi vulnerabile.
+
+La funzione \texttt{debug\_shell} apre una shell. Di base non sarebbe un problema, poiché non viene chiamata dal \texttt{main}.In questo caso però, è pericolosa per la presenza della vulnerabilità format string che può dirottare il normale flusso d'esecuzione.
+
+L'idea è di sfruttare la vulnerabilità format string andando a sovrascrivere l'indirizzo di ritorno di \texttt{log\_message} con l'indirizzo di \texttt{debug\_shell} in modo da aprire una shell.
+Per far ciò, è necessario sia conoscere l'indirizzo della funzione \texttt{debug\_shell} sia l'indirizzo dello stack dove è salvato l'indirizzo di ritorno di \texttt{log\_message} è salvato.
+Questi indirizzi però vengono randomizzati a causa delle due protezioni PIE e ASLR (attivo di default sul sistema operativo) che complicano ma non rendono impossibile lo sfruttamento.
+
+È possibile infatti calcolare l'indirzzo di \texttt{debug\_shell} dopo aver leakato un indirizzo dell'eseguibile e l'indirizzo dove è salvato l'indirizzo di ritorno di \texttt{log\_message} dopo un leak di un indirizzo dello stack.
