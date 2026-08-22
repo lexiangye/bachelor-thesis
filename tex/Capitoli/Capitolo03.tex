@@ -1,0 +1,7 @@
+\chapter{Sviluppo pratico di un exploit}\label{chapter:exploit}
+Finora abbiamo avuto sempre il codice sorgente disponibile. Nel mondo reale però, ci potrebbero essere servizi che non forniscono né il codice sorgente e nemmeno il file binario compilato, ma solamente l'interazione con esso. 
+L'attaccante si trova quindi in uno scenario di tipo \emph{black-box}. Di base non sa come sia scritto il programma, può solo fornirgli input e studiarne l'output o il comportamento.
+
+Nel caso però, l'attaccante entrasse in possesso anche solo del binario, è possibile, tramite gli strumenti elencati nella Sottosezione~\ref{subsec:tools}, ottenere informazioni estremamente utili tra cui: architettura, formato del file, impostazioni di sicurezza, disassemblato e decompilato (pseudocodice simile al linguaggio originale).
+
+Tali informazioni rendono possibile la ricostruzione e la comprensione della logica del programma e quindi rende possibile l'analisi di eventuali vulnerabilità. Questo è ciò che tratta questo capitolo: l'analisi un file binario, la ricerca di vulnerabilità e infine la scrittura di uno uno script Python che sfrutta tale vulnerabilità mettendo in uso le tecniche spiegate nel Capitolo~\ref{chapter:fmt_vuln}.
