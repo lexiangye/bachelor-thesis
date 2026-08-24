@@ -83,8 +83,135 @@ Per far ciò, è necessario conoscere sia l'indirizzo della funzione \texttt{deb
 
 Questi indirizzi però vengono randomizzati a causa di PIE (Codice~\ref{lst:checksec_output}) e ASLR, quest'ultima attiva di default a livello di sistema operativo, che complicano ma non rendono impossibile lo sfruttamento, soprattutto grazie alla presenza del ciclo \texttt{while}, che ci permette di iterare più volte sulla \texttt{printf} vulnerabile.
 
-È infatti possibile calcolare l'indirizzo di \texttt{debug\_shell} a partire dal leak di un indirizzo dell'eseguibile, e calcolare l'indirizzo dove è salvato il return address di \texttt{log\_message} a partire dal leak di un indirizzo dello stack. In una successiva iterazione è poi possibile sovrascrivere tale return address con l'indirizzo di \texttt{debug\_shell} appena calcolato.
+È infatti possibile calcolare l'indirizzo di \texttt{debug\_shell} a partire dal leak di un indirizzo dell'eseguibile, e calcolare l'indirizzo dove è salvato il return address di \texttt{log\_message} a partire dal leak di un indirizzo dello stack. In una successiva iterazione (della stessa esecuzione) è poi possibile sovrascrivere tale return address con l'indirizzo di \texttt{debug\_shell} appena calcolato.
 
 
 \section{Fase di leak: individuazione degli indirizzi utili}\label{sec:leak_phase}
+Questa prima fase si occupa di scovare tutti gli indirizzi necessari alla conseguente scrittura del return address di \texttt{log\_message}, che dirotta il flusso del programma.
 
+\subsection{Leak dell'eseguibile: l'indirizzo di \texttt{debug\_shell}}\label{subsec:bin_leak}
+Ogni binario viene caricato in memoria a partire da un indirizzo di \emph{base}: ogni suo elemento si trova a un offset fisso da questa base, lo stesso a ogni esecuzione anche quando la base cambia a causa di ASLR. Per trovare l'indirizzo di \texttt{debug\_shell} basta quindi il leak di un singolo indirizzo dell'eseguibile, da cui ricavare la base sottraendo l'offset noto del punto di leak, per poi risalire a qualunque altro elemento del binario sommando il suo offset.
+
+Troviamo un indirizzo del binario all'interno del return address salvato dalla chiamata a \texttt{log\_message}, che punta all'istruzione successiva alla chiamata della funzione stessa dentro \texttt{main}. Tale return address viene depositato implicitamente sullo stack dalla chiamata a \texttt{log\_message} prima che la funzione venga eseguita.
+
+Abbiamo già visto nel Capitolo~\ref{chapter:fmt_vuln} che possiamo fare il leak delle \emph{qword} presenti nello stack, a partire dalla cima dello stack frame della funzione che chiama la \texttt{printf} vulnerabile. Di conseguenza, anche il return address di \texttt{log\_message} è raggiungibile tramite lo specificatore giusto, da individuare a partire dal suo disassemblato (Codice~\ref{lst:disas_log_message}).
+\begin{lstlisting}[
+    language={},
+    numbers=none,
+    gobble=4,
+    caption={Estratto del disassemblato di \texttt{log\_message}},
+    label={lst:disas_log_message}
+]
+    endbr64
+    push   rbp
+    mov    rbp,rsp
+    sub    rsp,0x10
+    
+    ; ...
+
+    call   printf@plt
+
+    ; ...
+\end{lstlisting}
+Vengono allocati \texttt{0x10} byte (16 in decimale) per le variabili locali, e \texttt{rsp} non viene più toccato prima della chiamata a \texttt{printf}. Quindi lo stato dello stack frame di \texttt{log\_message} al momento della chiamata a \texttt{printf} è quello mostrato in Figura~\ref{fig:stack_log_message}.
+
+\begin{figure}[ht]
+    \centering
+    \begin{tikzpicture}[
+        box/.style={
+            draw, thick,
+            minimum width=4.8cm,
+            minimum height=1cm,
+            anchor=south west,
+            font=\ttfamily\small
+        },
+        emptybox/.style={
+            draw, thick,
+            minimum width=4.8cm,
+            minimum height=1cm,
+            anchor=south west
+        },
+        ptr/.style={-{Stealth[length=3mm]}, thick},
+        addr/.style={font=\ttfamily\footnotesize, anchor=west, inner sep=3pt}
+    ]
+
+    % Blocchi: base (indirizzi alti) in basso, cima (indirizzi bassi) in alto
+    \node[box]      (ret)  at (0,0) {saved ret addr};
+    \node[box]      (srbp) at (0,1) {saved rbp};
+    \node[emptybox] (loc1) at (0,2) {};
+    \node[emptybox] (loc0) at (0,3) {};
+
+    % Puntatori a sinistra: freccia allo spigolo alto-sinistra del blocco
+    \node[font=\ttfamily\small, anchor=east] (rsplabel) at (-1.9,4) {rsp};
+    \draw[ptr] (rsplabel.east) -- (0,4);
+    \node[font=\ttfamily\small, anchor=east] (rbplabel) at (-1.9,2) {rbp};
+    \draw[ptr] (rbplabel.east) -- (0,2);
+
+    % Indirizzi a destra: allo spigolo alto-destra del blocco
+    \node[addr] at (4.8,4) {rbp-0x10};
+    \node[addr] at (4.8,1) {rbp+0x8};
+
+    % Etichette indirizzi alti/bassi + freccia verticale
+    \node[font=\small] (low)  at (8.1,4.3)  {indirizzi più bassi};
+    \node[font=\small] (high) at (8.1,-0.3) {indirizzi più alti};
+    \draw[ptr] (low) -- (high);
+
+    \end{tikzpicture}
+    \caption{Stato dello stack frame di \texttt{log\_message} al momento della chiamata a \texttt{printf}, con la posizione del return address}
+    \label{fig:stack_log_message}
+\end{figure}
+
+Il return address è quindi la quarta qword a partire dalla cima dello stack, e lo specificatore corrispondente della format string è dunque il nono (cinque registri general-purpose più quattro qword dello stack). Trattandosi di un indirizzo, possiamo usare lo specificatore \texttt{\%p}: a differenza di \texttt{\%x}, \texttt{\%p} non richiede (né ammette) il modificatore \texttt{\%l}, poiché lo standard lo definisce univocamente per un argomento \texttt{void*}, la cui dimensione coincide già con quella di un puntatore sulla piattaforma corrente \cite{man3printf} (Codice~\ref{lst:leak_return_address}).
+\begin{lstlisting}[
+    language=Python,
+    numbers=none,
+    gobble=4,
+    caption={Leak del return address di \texttt{log\_message}},
+    label={lst:leak_return_address}
+]
+    # ...
+
+    payload1 = b'%9$p'
+    io.sendlineafter(b'=== MiniLog v1.0 ===\n', payload1)
+
+    # ...
+\end{lstlisting}
+
+Restano da conoscere due soli valori per poter calcolare l'indirizzo di \texttt{debug\_shell}: l'offset del punto in cui abbiamo effettuato il leak, e l'offset di \texttt{debug\_shell} stessa. Entrambi si ricavano dal disassemblato di \texttt{objdump} (Codice~\ref{lst:debug_shell_offset}), che per un binario con PIE mostra gli indirizzi delle istruzioni come offset rispetto alla base --- e non come indirizzi assoluti, come accadrebbe altrimenti.
+\begin{lstlisting}[
+    language={},
+    numbers=none,
+    gobble=4,
+    caption={Estratto del disassemblato: offset del leak e di \texttt{debug\_shell}},
+    label={lst:debug_shell_offset}
+]
+    00000000000011c9 <debug_shell>:
+        11c9:	endbr64
+
+    ; ...
+
+    0000000000001207 <main>:
+        ; ...
+        123a:	call   11e3 <log_message>
+        123f:	mov    rdx,QWORD PTR [rip+0x2dca]        # 4010 <stdin@GLIBC_2.2.5>
+
+    ; ...
+\end{lstlisting}
+L'offset dell'indirizzo di cui abbiamo fatto il leak equivale a \texttt{0x123f}, mentre l'offset di \texttt{debug\_shell} vale \texttt{0x11c9}.
+
+Il calcolo dell'indirizzo di \texttt{debug\_shell} è mostrato nel Codice~\ref{lst:debug_shell_address}, dove \texttt{binary\_addr} è l'indirizzo ottenuto dal leak del Codice~\ref{lst:leak_return_address}.
+\begin{lstlisting}[
+    language=Python,
+    numbers=none,
+    gobble=4,
+    caption={Calcolo dell'indirizzo della funzione \texttt{debug\_shell}},
+    label={lst:debug_shell_address}
+]
+    # ...
+
+    binary_addr = int(io.recvline(), 16)
+    base_addr = binary_addr - 0x123f
+    debug_shell_addr = base_addr + 0x11c9
+
+    # ...
+\end{lstlisting}
