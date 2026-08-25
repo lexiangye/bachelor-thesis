@@ -215,3 +215,139 @@ Il calcolo dell'indirizzo di \texttt{debug\_shell} è mostrato nel Codice~\ref{l
 
     # ...
 \end{lstlisting}
+
+\subsection{Leak dello stack: la posizione del return address}\label{subsec:stack_leak}
+Lo stack --- anch'esso randomizzato da ASLR --- viene caricato in una posizione differente dal binario, quindi il leak ricavato nella Sottosezione~\ref{subsec:bin_leak} non è utile. Tuttavia la struttura di tale stack, ovvero la sua costruzione, rimane la stessa ed è definita nel disassemblato del programma.
+
+Di conseguenza, come per l'indirizzo di \texttt{debug\_shell}, per trovare la posizione del return address di \texttt{log\_message} è sufficiente un leak di un indirizzo dello stack da cui poi calcolare la posizione di altri elementi tramite la conoscenza della sua struttura.
+
+Alla funzione \texttt{log\_message} viene passato un puntatore a \texttt{buf} dichiarato localmente in \texttt{main}. Dal disassemblato si osserva che questo puntatore viene salvato nello stack frame di \texttt{log\_message} (Codice~\ref{lst:program_stack}). L'obiettivo del leak è quindi questo puntatore che corrisponde a un indirizzo dello stack, poiché \texttt{buf} è una variabile locale.
+
+Sia per il leak che per il successivo calcolo della posizione del return address di \texttt{log\_message} è necessario conoscere la struttura dello stack al momento della chiamata a \texttt{printf} vulnerabile. Questa si ricava dal disassemblato (Codice~\ref{lst:program_stack}).
+\begin{lstlisting}[
+    language={},
+    numbers=none,
+    gobble=4,
+    caption={Estratto del disassemblato del binario},
+    label={lst:program_stack}
+]
+    log_message:
+        endbr64
+    	push   rbp
+    	mov    rbp,rsp
+    	sub    rsp,0x10
+    	mov    QWORD PTR [rbp-0x8],rdi
+
+        ; ...
+
+    	call   printf@plt
+    
+        ; ...
+        
+    main:
+    	endbr64
+    	push   rbp
+    	mov    rbp,rsp
+    	sub    rsp,0x50
+
+        ; ...
+
+    	lea    rax,[rbp-0x50]
+    	mov    rdi,rax
+    	call   log_message
+
+    ; ...
+\end{lstlisting}
+\texttt{main} alloca \texttt{0x50} byte (80 in decimale) per le variabili locali e posiziona \texttt{buf} a \texttt{rbp - 0x50}, proprio in cima allo stack.
+
+\texttt{log\_message} ne alloca \texttt{0x10} (16 in decimale) come abbiamo già visto nella Sottosezione~\ref{subsec:bin_leak}. Inoltre posiziona il puntatore a \texttt{buf} a \texttt{rbp-0x8}, ovvero come seconda qword a partire da \texttt{rsp}.
+
+Lo stack frame di \texttt{log\_message} viene creato dopo lo stack frame di \texttt{main} poiché viene proprio chiamata da \texttt{main}. Perciò lo stato dello stack alla chiamata della \texttt{printf} vulnerabile sarà quello mostrato in Figura~\ref{fig:stack_ret_addr}.
+
+\begin{figure}[ht]
+    \centering
+    \begin{tikzpicture}[
+        box/.style={
+            draw, thick,
+            minimum width=4.8cm,
+            minimum height=1cm,
+            anchor=south west,
+            font=\ttfamily\small
+        },
+        emptybox/.style={
+            draw, thick,
+            minimum width=4.8cm,
+            minimum height=1cm,
+            anchor=south west
+        },
+        ptr/.style={-{Stealth[length=3mm]}, thick},
+        addr/.style={font=\ttfamily\footnotesize, anchor=west, inner sep=3pt}
+    ]
+
+    % Blocchi: base (indirizzi alti) in basso, cima (indirizzi bassi) in alto
+    % Stack frame di main (in basso): buf in cima, il resto omesso
+    \node[emptybox] (gapmain) at (0,0) {};
+    \node at (2.4,0.5) {\color{gray}$\vdots$};
+    \node[box, minimum height=2cm] (buf) at (0,1) {buf};
+    % Stack frame di log_message (in alto)
+    \node[box]      (ret)    at (0,3) {saved ret addr};
+    \node[box]      (srbp)   at (0,4) {saved rbp};
+    \node[box]      (ptrbuf) at (0,5) {ptr a buf};
+    \node[emptybox] (top)    at (0,6) {};
+
+    % Puntatori a sinistra: freccia allo spigolo alto-sinistra del blocco
+    \node[font=\ttfamily\small, anchor=east] (rsplabel) at (-1.9,7) {rsp};
+    \draw[ptr] (rsplabel.east) -- (0,7);
+    \node[font=\ttfamily\small, anchor=east] (rbplabel) at (-1.9,5) {rbp};
+    \draw[ptr] (rbplabel.east) -- (0,5);
+
+    % Il puntatore salvato in log_message punta a buf (nello stack frame di main)
+    \draw[ptr] (ptrbuf.west) .. controls (-1.2,5.4) and (-1.2,3.1) .. (0,3);
+
+    % Indirizzi a destra: allo spigolo alto-destra del blocco
+    \node[addr] at (4.8,7) {rbp-0x10};
+    \node[addr] at (4.8,6) {rbp-0x8};
+    \node[addr] at (4.8,4) {rbp+0x8};
+    \node[addr] at (4.8,3) {rbp+0x10};
+
+    % Etichette indirizzi alti/bassi + freccia verticale
+    \node[font=\small] (low)  at (8.1,7.3)  {indirizzi più bassi};
+    \node[font=\small] (high) at (8.1,-0.3) {indirizzi più alti};
+    \draw[ptr] (low) -- (high);
+
+    \end{tikzpicture}
+    \caption{Stato dello stack al momento della chiamata alla \texttt{printf} vulnerabile, con il puntatore a \texttt{buf} (obiettivo del leak) e il return address di \texttt{log\_message}}
+    \label{fig:stack_ret_addr}
+\end{figure}
+
+Dato che il puntatore a \texttt{buf} è il secondo argomento a partire da \texttt{rsp}, corrisponde al settimo specificatore (cinque registri general-purpose più due qword dello stack) della \texttt{printf} vulnerabile (Codice~\ref{lst:leak_buf}).
+\begin{lstlisting}[
+    language=Python,
+    numbers=none,
+    gobble=4,
+    caption={Leak della posizione di \texttt{buf}},
+    label={lst:leak_buf}
+]
+    # ...
+
+    payload2 = b'%7$p'
+    io.sendline(payload2)
+
+    # ...
+\end{lstlisting}
+
+Una volta ottenuto il leak della posizione di \texttt{buf}, dalla struttura dello stack mostrato in Figura~\ref{fig:stack_ret_addr}, possiamo calcolarci la posizione del return address di \texttt{log\_message} che è proprio la qword appena sopra. Di conseguenza dobbiamo sottrarre la dimensione di una qword, ovvero di 8 byte, all'indirizzo dello stack di cui abbiamo il leak. Tale calcolo è mostrato nel Codice~\ref{lst:leak_ret_pos} dove \texttt{buf\_addr} corrisponde all'indirizzo ottenuto dal leak del Codice~\ref{lst:leak_buf}.
+\begin{lstlisting}[
+    language=Python,
+    numbers=none,
+    gobble=4,
+    caption={Leak della posizione del return address di \texttt{log\_message}},
+    label={lst:leak_ret_pos}
+]
+    # ...
+
+    buf_addr = int(io.recvline(), 16)
+    ret_pos_addr = buf_addr - 8
+
+    # ...
+\end{lstlisting}
