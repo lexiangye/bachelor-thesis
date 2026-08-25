@@ -109,7 +109,7 @@ Per determinare dove la variabile \texttt{local\_secret} viene collocata esattam
     ; ...
 \end{lstlisting}
 Lo spazio per le variabili locali viene allocato da ``\texttt{sub rsp, 0x60}'', ovvero 96 byte.
-Il registro \texttt{rsp} (\emph{stack pointer}) subito prima della \texttt{sub} ha lo stesso valore del registro \texttt{rbp} (\emph{base pointer}). Di conseguenza ``\texttt{mov QWORD PTR [rbp-0x58], 0x1337}'' indica che \texttt{local\_secret} si trova nel secondo \emph{qword} (blocco da 8 byte) a partire dalla cima dello stack (\texttt{rsp}), poiché il primo qword si troverebbe a \texttt{rbp-0x60}.
+Il registro \texttt{rsp} (\emph{stack pointer}) subito prima della \texttt{sub} ha lo stesso valore del registro \texttt{rbp} (\emph{base pointer}). Di conseguenza ``\texttt{mov QWORD PTR [rbp-0x58], 0x1337}'' indica che \texttt{local\_secret} si trova nella seconda \emph{qword} (blocco da 8 byte) a partire dalla cima dello stack (\texttt{rsp}), poiché la prima qword si troverebbe a \texttt{rbp-0x60}.
 
 Lo stack pointer non viene più modificato prima della chiamata a \texttt{printf} che quindi si ritrova con lo stack nello stato illustrato in Figura~\ref{fig:stack_leak_demo}.
 
@@ -164,7 +164,7 @@ Lo stack pointer non viene più modificato prima della chiamata a \texttt{printf
 
 La format string occupa da sola il primo registro disponibile, \texttt{\%rdi}; restano quindi cinque registri \emph{general-purpose} (\texttt{\%rsi}, \texttt{\%rdx}, \texttt{\%rcx}, \texttt{\%r8}, \texttt{\%r9}) che la format string non ha richiesto esplicitamente, ma che \texttt{va\_arg} considera comunque disponibili: sono gli ``argomenti fantasma'' introdotti nella Sezione~\ref{sec:callconv}. I primi cinque specificatori di formato leggono dunque, uno per uno, il contenuto residuo di questi cinque registri.
 
-Esauriti i registri, il sesto specificatore legge il primo argomento dallo stack, puntato da \texttt{overflow\_arg\_area} a partire dall'\texttt{rsp} di \texttt{main} al momento della chiamata --- lo stesso \texttt{rsp} da cui abbiamo appena misurato la posizione di \texttt{local\_secret}. Il settimo specificatore legge quindi il secondo qword a partire da \texttt{rsp}, che è esattamente dove si trova \texttt{local\_secret}.
+Esauriti i registri, il sesto specificatore legge il primo argomento dallo stack, puntato da \texttt{overflow\_arg\_area} a partire dall'\texttt{rsp} di \texttt{main} al momento della chiamata --- lo stesso \texttt{rsp} da cui abbiamo appena misurato la posizione di \texttt{local\_secret}. Il settimo specificatore legge quindi la seconda qword a partire da \texttt{rsp}, che è esattamente dove si trova \texttt{local\_secret}.
 
 \texttt{local\_secret} è dichiarata \texttt{long} (Codice~\ref{lst:leak_demo_c}): leggerla per intero richiede che lo specificatore interpreti 8 byte, non i 4 di un int. Da qui il modificatore \texttt{l} già visto nella Sezione~\ref{sec:funcvar_format}.
 
@@ -330,7 +330,7 @@ Come per la lettura in Sezione~\ref{sec:info_disclosure}, anche \texttt{global\_
 
 Per effettuare questa operazione, si può utilizzare la libreria \texttt{pwntools} in uno script Python (Codice~\ref{lst:python_write}).
 \begin{lstlisting}[
-    language={Python},
+    language=Python,
     numbers=none,
     gobble=4,
     caption={Scrittura di \texttt{0x1337} in \texttt{global\_secret} con \texttt{pwntools}},
@@ -372,7 +372,7 @@ Inoltre, trattandosi di un'unica chiamata a \texttt{printf}, il contatore dei ca
 
 Vediamo l'estratto Python per la scrittura parziale e analizziamo come è costruito il payload (Codice~\ref{lst:python_partial_write}).
 \begin{lstlisting}[
-    language={Python},
+    language=Python,
     numbers=none,
     gobble=4,
     caption={Scrittura parziale di \texttt{0xdeadbeef} in \texttt{global\_secret} con \texttt{pwntools}},
