@@ -217,52 +217,32 @@ Il calcolo dell'indirizzo di \texttt{debug\_shell} è mostrato nel Codice~\ref{l
 \end{lstlisting}
 
 \subsection{Leak dello stack: la posizione del return address}\label{subsec:stack_leak}
-Lo stack --- anch'esso randomizzato da ASLR --- viene caricato in una posizione differente dal binario, quindi il leak ricavato nella Sottosezione~\ref{subsec:bin_leak} non è utile. Tuttavia la struttura di tale stack, ovvero la sua costruzione, rimane la stessa ed è definita nel disassemblato del programma.
+Lo stack --- anch'esso randomizzato da ASLR --- viene caricato in una posizione differente dall'eseguibile, quindi il leak ricavato nella Sottosezione~\ref{subsec:bin_leak} non è utile. La sua struttura interna, però, resta identica a ogni esecuzione ed è ricavabile dal disassemblato del programma: come per l'indirizzo di \texttt{debug\_shell}, basta quindi il leak di un singolo indirizzo dello stack per risalire, tramite questa struttura nota, alla posizione del return address di \texttt{log\_message}.
 
-Di conseguenza, come per l'indirizzo di \texttt{debug\_shell}, per trovare la posizione del return address di \texttt{log\_message} è sufficiente un leak di un indirizzo dello stack da cui poi calcolare la posizione di altri elementi tramite la conoscenza della sua struttura.
+Alla funzione \texttt{log\_message} viene passato un puntatore a \texttt{buf}, la variabile locale dichiarata in \texttt{main}: l'obiettivo del leak è proprio questo puntatore, che corrisponde a un indirizzo dello stack poiché \texttt{buf} è una variabile locale. Il disassemblato di \texttt{log\_message} (Codice~\ref{lst:disas_log_message}), nel tratto omesso subito dopo l'allocazione dello spazio per le variabili locali, salva questo puntatore con \texttt{mov QWORD PTR [rbp-0x8],rdi}: il puntatore occupa quindi la seconda delle due qword precedentemente lasciate vuote in Figura~\ref{fig:stack_log_message}, a partire da \texttt{rsp}.
 
-Alla funzione \texttt{log\_message} viene passato un puntatore a \texttt{buf} dichiarato localmente in \texttt{main}. Dal disassemblato si osserva che questo puntatore viene salvato nello stack frame di \texttt{log\_message} (Codice~\ref{lst:program_stack}). L'obiettivo del leak è quindi questo puntatore che corrisponde a un indirizzo dello stack, poiché \texttt{buf} è una variabile locale.
-
-Sia per il leak che per il successivo calcolo della posizione del return address di \texttt{log\_message} è necessario conoscere la struttura dello stack al momento della chiamata a \texttt{printf} vulnerabile. Questa si ricava dal disassemblato (Codice~\ref{lst:program_stack}).
+Per calcolare la posizione del return address di \texttt{log\_message}, resta da conoscere la posizione di \texttt{buf} rispetto a tale return address. Questa si ricava dal disassemblato di \texttt{main} (Codice~\ref{lst:disas_main}).
 \begin{lstlisting}[
     language={},
     numbers=none,
     gobble=4,
-    caption={Estratto del disassemblato del binario},
-    label={lst:program_stack}
+    caption={Estratto del disassemblato di \texttt{main}: allocazione dello stack e chiamata a \texttt{log\_message}},
+    label={lst:disas_main}
 ]
-    log_message:
-        endbr64
-    	push   rbp
-    	mov    rbp,rsp
-    	sub    rsp,0x10
-    	mov    QWORD PTR [rbp-0x8],rdi
+    endbr64
+    push   rbp
+    mov    rbp,rsp
+    sub    rsp,0x50
 
-        ; ...
+    ; ...
 
-    	call   printf@plt
-    
-        ; ...
-        
-    main:
-    	endbr64
-    	push   rbp
-    	mov    rbp,rsp
-    	sub    rsp,0x50
-
-        ; ...
-
-    	lea    rax,[rbp-0x50]
-    	mov    rdi,rax
-    	call   log_message
+    lea    rax,[rbp-0x50]
+    mov    rdi,rax
+    call   log_message
 
     ; ...
 \end{lstlisting}
-\texttt{main} alloca \texttt{0x50} byte (80 in decimale) per le variabili locali e posiziona \texttt{buf} a \texttt{rbp - 0x50}, proprio in cima allo stack.
-
-\texttt{log\_message} ne alloca \texttt{0x10} (16 in decimale) come abbiamo già visto nella Sottosezione~\ref{subsec:bin_leak}. Inoltre posiziona il puntatore a \texttt{buf} a \texttt{rbp-0x8}, ovvero come seconda qword a partire da \texttt{rsp}.
-
-Lo stack frame di \texttt{log\_message} viene creato dopo lo stack frame di \texttt{main} poiché viene proprio chiamata da \texttt{main}. Perciò lo stato dello stack alla chiamata della \texttt{printf} vulnerabile sarà quello mostrato in Figura~\ref{fig:stack_ret_addr}.
+\texttt{main} alloca \texttt{0x50} byte (80 in decimale) per le variabili locali e posiziona \texttt{buf} a \texttt{rbp-0x50}, in cima al proprio spazio --- cioè esattamente a \texttt{rsp} nel momento in cui chiama \texttt{log\_message}. La chiamata deposita il return address, che occupa quindi gli 8 byte immediatamente sopra l'inizio di \texttt{buf}, senza alcuno scarto. Perciò lo stato dello stack alla chiamata della \texttt{printf} vulnerabile è quello mostrato in Figura~\ref{fig:stack_ret_addr}.
 
 \begin{figure}[ht]
     \centering
@@ -316,11 +296,11 @@ Lo stack frame di \texttt{log\_message} viene creato dopo lo stack frame di \tex
     \draw[ptr] (low) -- (high);
 
     \end{tikzpicture}
-    \caption{Stato dello stack al momento della chiamata alla \texttt{printf} vulnerabile, con il puntatore a \texttt{buf} (obiettivo del leak) e il return address di \texttt{log\_message}}
+    \caption{Stato dello stack al momento della chiamata a \texttt{printf}, con il puntatore a \texttt{buf} (obiettivo del leak) e il return address di \texttt{log\_message}}
     \label{fig:stack_ret_addr}
 \end{figure}
 
-Dato che il puntatore a \texttt{buf} è il secondo argomento a partire da \texttt{rsp}, corrisponde al settimo specificatore (cinque registri general-purpose più due qword dello stack) della \texttt{printf} vulnerabile (Codice~\ref{lst:leak_buf}).
+Dato che il puntatore a \texttt{buf} è la seconda qword a partire da \texttt{rsp}, corrisponde al settimo specificatore (cinque registri general-purpose più due qword dello stack) della \texttt{printf} vulnerabile (Codice~\ref{lst:leak_buf}).
 \begin{lstlisting}[
     language=Python,
     numbers=none,
@@ -336,13 +316,13 @@ Dato che il puntatore a \texttt{buf} è il secondo argomento a partire da \textt
     # ...
 \end{lstlisting}
 
-Una volta ottenuto il leak della posizione di \texttt{buf}, dalla struttura dello stack mostrato in Figura~\ref{fig:stack_ret_addr}, possiamo calcolarci la posizione del return address di \texttt{log\_message} che è proprio la qword appena sopra. Di conseguenza dobbiamo sottrarre la dimensione di una qword, ovvero di 8 byte, all'indirizzo dello stack di cui abbiamo il leak. Tale calcolo è mostrato nel Codice~\ref{lst:leak_ret_pos} dove \texttt{buf\_addr} corrisponde all'indirizzo ottenuto dal leak del Codice~\ref{lst:leak_buf}.
+La posizione del return address rispetto a \texttt{buf} è già nota (Figura~\ref{fig:stack_ret_addr}): una volta ottenuto il leak, basta sottrarre 8 byte all'indirizzo ricevuto per ricavarla. Il calcolo è mostrato nel Codice~\ref{lst:calc_ret_pos}, dove \texttt{buf\_addr} corrisponde all'indirizzo ottenuto dal leak del Codice~\ref{lst:leak_buf}.
 \begin{lstlisting}[
     language=Python,
     numbers=none,
     gobble=4,
-    caption={Leak della posizione del return address di \texttt{log\_message}},
-    label={lst:leak_ret_pos}
+    caption={Calcolo della posizione del return address di \texttt{log\_message}},
+    label={lst:calc_ret_pos}
 ]
     # ...
 
@@ -351,3 +331,5 @@ Una volta ottenuto il leak della posizione di \texttt{buf}, dalla struttura dell
 
     # ...
 \end{lstlisting}
+
+A questo punto sono noti sia l'indirizzo di \texttt{debug\_shell} a cui ritornare (\texttt{debug\_shell\_addr}) sia la posizione in cui scriverlo (\texttt{ret\_pos\_addr}): resta da vedere come eseguire concretamente la scrittura tramite \texttt{\%n}.
