@@ -342,6 +342,68 @@ Poiché tale valore, in decimale, è enorme, non è possibile scriverlo con un'u
 
 \texttt{debug\_shell\_addr} permette però una scorciatoia che riduce tutto a una singola scrittura. Il suo offset (\texttt{0x11c9}) e l'offset del return address già presente sullo stack (\texttt{0x123f}, l'obiettivo della sovrascrittura) cadono nella stessa \emph{pagina} da \texttt{0x1000} byte del binario: divisi per \texttt{0x1000} danno lo stesso quoziente. Poiché la base scelta da ASLR è sempre allineata a una pagina, ovvero sempre multiplo di \texttt{0x1000}, sommandola a ciascuno dei due offset si ottengono due indirizzi che condividono tutti i bit tranne i 12 bit meno significativi, qualunque sia la base scelta. Il valore già presente all'indirizzo \texttt{ret\_pos\_addr} ha perciò già la parte alta corretta per diventare \texttt{debug\_shell\_addr}: resta da cambiare solo la parte bassa, che rientra comodamente in 2 byte. Basta dunque una singola scrittura con \texttt{\%hn}.
 
+\begin{figure}[ht]
+    \centering
+    \begin{tikzpicture}[
+        hbox/.style={
+            draw, thick,
+            fill=gray!20,
+            minimum width=3.8cm,
+            minimum height=1.2cm,
+            anchor=south west,
+            align=center,
+            font=\small
+        },
+        nib/.style={
+            draw, thick,
+            minimum width=1.05cm,
+            minimum height=1.2cm,
+            anchor=south west,
+            align=center,
+            font=\ttfamily
+        },
+        rowlabel/.style={anchor=east, align=right, font=\small},
+        bitlabel/.style={anchor=south, font=\footnotesize},
+        rel/.style={font=\large}
+    ]
+
+    % Riga superiore: debug_shell_addr (valore da scrivere)
+    \node[hbox] (h1) at (0,2.2)    {numero di pagina\\[1pt]{\scriptsize (da ASLR)}};
+    \node[nib]  (b1) at (3.8,2.2)  {1\\{\scriptsize 0001}};
+    \node[nib]  (c1) at (4.85,2.2) {c\\{\scriptsize 1100}};
+    \node[nib]  (d1) at (5.90,2.2) {9\\{\scriptsize 1001}};
+
+    % Riga inferiore: valore attuale in ret_pos_addr
+    \node[hbox] (h2) at (0,0)    {numero di pagina\\[1pt]{\scriptsize (da ASLR)}};
+    \node[nib]  (b2) at (3.8,0)  {2\\{\scriptsize 0010}};
+    \node[nib]  (c2) at (4.85,0) {3\\{\scriptsize 0011}};
+    \node[nib]  (d2) at (5.90,0) {f\\{\scriptsize 1111}};
+
+    % Etichette di riga (a sinistra)
+    \node[rowlabel] at (-0.25,2.8) {\texttt{debug\_shell\_addr}\\[2pt]{\footnotesize da scrivere}};
+    \node[rowlabel] at (-0.25,0.6) {\texttt{ret\_pos\_addr}\\[2pt]{\footnotesize return address attuale}};
+
+    % Etichette dei bit (in alto)
+    \node[bitlabel] at (1.9,3.5)   {bit 63--12};
+    \node[bitlabel] at (4.325,3.5) {11--8};
+    \node[bitlabel] at (5.375,3.5) {7--4};
+    \node[bitlabel] at (6.425,3.5) {3--0};
+
+    % Relazioni fra le due righe
+    \node[rel] at (1.9,1.7)   {$=$};
+    \node[rel] at (5.375,1.7) {$\neq$};
+
+    % Parentesi inferiore sull'offset di pagina (12 bit)
+    \draw[thick] (3.8,-0.15) -- (3.8,-0.35) -- (6.95,-0.35) -- (6.95,-0.15);
+    \node[anchor=north, align=center, font=\footnotesize] at (5.375,-0.45)
+        {offset nella pagina: unica differenza\\[1pt]12 bit $\Rightarrow$ una \texttt{\%hn} da 2 byte};
+
+    \end{tikzpicture}
+    \caption{Confronto fra \texttt{debug\_shell\_addr} e il return address in
+    \texttt{ret\_pos\_addr}: stesso numero di pagina, offset di pagina diverso}
+    \label{fig:addr_bitfield}
+\end{figure} 
+
 Scrivere \texttt{debug\_shell\_addr} così com'è, però, non basta: la scrittura riesce, ma l'esecuzione successiva termina con un crash (\texttt{SIGSEGV}).
 La causa è l'allineamento dello stack richiesto dalla System V AMD64 ABI: subito prima di ogni chiamata, \texttt{rsp} deve essere un multiplo di 16 byte \cite{psabi2025}.
 
