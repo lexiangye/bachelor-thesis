@@ -333,3 +333,83 @@ La posizione del return address rispetto a \texttt{buf} è già nota (Figura~\re
 \end{lstlisting}
 
 A questo punto sono noti sia l'indirizzo di \texttt{debug\_shell} a cui ritornare (\texttt{debug\_shell\_addr}) sia la posizione in cui scriverlo (\texttt{ret\_pos\_addr}): resta da vedere come eseguire concretamente la scrittura tramite \texttt{\%n}.
+
+
+\section{Fase di write: dagli indirizzi alla scrittura arbitraria}\label{sec:write_phase}
+Rispetto alle scritture del Capitolo~\ref{chapter:fmt_vuln}, cambia la natura del valore da scrivere: non è noto a priori, ma viene calcolato a runtime dallo script dopo il leak di un indirizzo dell'eseguibile (Codice~\ref{lst:debug_shell_address}). Quindi anche il calcolo del payload, padding compreso, spetta allo script. % : non può essere derivato manualmente come per i casi del Capitolo~\ref{chapter:fmt_vuln}.
+
+Siccome tale valore corrisponde a un valore decimale enorme, non possiamo scriverlo con un'unica \texttt{\%ln}, ma sono necessarie più scritture parziali tramite \texttt{\%hn} (Sezione~\ref{sec:partial_write}). Lo script deve perciò anche ordinare a runtime queste scritture.
+
+Normalmente quindi servirebbero più scritture da 2 byte (\%hn) per poter scrivere un indirizzo qualunque; \texttt{debug\_shell\_addr} permette però una scorciatoia.
+Il suo offset, \texttt{0x11c9}, e l'offset del return address già presente sullo stack, \texttt{0x123f}, e che è l'obiettivo della sovrascrittura, cadono nella stessa pagina da \texttt{0x1000} byte del binario: divisi per \texttt{0x1000} danno lo stesso quoziente.
+Poiché la base scelta da ASLR è sempre allineata a una pagina, ovvero sempre multiplo di \texttt{0x1000}, sommandola a ciascuno dei due offset si ottengono due indirizzi che condividono tutti i bit tranne gli ultimi 12 bit meno significativi, qualunque sia la base scelta.
+Il valore già presente in \texttt{ret\_pos\_addr} ha perciò già la parte alta corretta per diventare \texttt{debug\_shell\_addr}: resta da cambiare solo la parte bassa, che rientra comodamente in 2 byte. Basta dunque una singola scrittura con \texttt{\%hn}.
+
+% Come sempre, è necessario conoscere la posizione di \texttt{buf} per poi andare a scoprire l'indice posizionale da assegnare allo specificatore \texttt{\%hn}, che dipende dal punto in cui inseriamo l'indirizzo, a cui vogliamo scrivere, all'interno di \texttt{buf}. Lo stato dello stack al momento della chiamata alla \texttt{print} vulnerabile è già illustrato in Figura~\ref{fig:stack_ret_addr}, da cui ricaviamo che buf è la quinta qword a partire da \texttt{rsp}, ovvero corrisponde al decimo specificatore di formato della format string (cinque registri general-purpose più cinque qword).
+
+% Resta da individuare la posizione da assegnare al puntatore nel payload. La posizione 9, già usata nella Sottosezione~\ref{subsec:bin_leak} per il leak del return address, corrisponde infatti esattamente a \texttt{ret\_pos\_addr}. Poiché \texttt{buf\_addr = ret\_pos\_addr + 8} (Codice~\ref{lst:calc_ret_pos}), il contenuto di \texttt{buf} inizia dunque alla posizione 10.
+
+Scrivere \texttt{debug\_shell\_addr} così com'è, però, non basta: la scrittura riesce, ma l'esecuzione successiva termina con un crash (\texttt{SIGSEGV}).
+La causa è l'allineamento dello stack richiesto dalla System V AMD64 ABI: subito prima di ogni chiamata, \texttt{rsp} deve essere un multiplo di 16 byte \cite{psabi2025}. Una chiamata deposita 8 byte sullo stack (l'indirizzo di ritorno): di conseguenza, all'ingresso della funzione chiamata, \texttt{rsp} si trova sempre spostato di 8 byte rispetto a quel multiplo. È a questo che si appoggia il prologo standard, che con \texttt{push rbp} consuma esattamente questi 8 byte, riportando \texttt{rsp} a un multiplo di 16 prima che la funzione prosegua --- come nel prologo di \texttt{debug\_shell} stessa (Codice~\ref{lst:disas_debug_shell}).
+
+\begin{lstlisting}[
+    language={},
+    numbers=none,
+    gobble=4,
+    caption={Estratto del disassemblato di \texttt{debug\_shell}},
+    label={lst:disas_debug_shell}
+]
+    00000000000011c9 <debug_shell>:
+        11c9:	endbr64
+        11cd:	push   rbp
+        11ce:	mov    rbp,rsp
+        11d1:	lea    rax,[rip+0xe2c]
+        11d8:	mov    rdi,rax
+        11db:	call   10b0 <system@plt>
+        
+        ; ...
+\end{lstlisting}
+
+La correzione è saltare i primi 5 byte di \texttt{debug\_shell}, cioè \texttt{endbr64} (4 byte, che non tocca lo stack) e \texttt{push rbp} (1 byte, la vera causa dello sfasamento): il valore da scrivere diventa quindi \texttt{debug\_shell\_addr + 5}, non \texttt{debug\_shell\_addr}. Da quel punto in poi il codice resta intatto --- \texttt{mov rsp,rbp}, poi le istruzioni che caricano l'indirizzo di \texttt{"/bin/sh"} in \texttt{rdi} --- quindi la chiamata a \texttt{system()} riceve l'argomento corretto e l'allineamento è quello giusto. 
+ 
+\texttt{debug\_shell\_addr + 5}, offset \texttt{0x11ce}, cade comunque nella stessa pagina di \texttt{0x11c9} e \texttt{0x123f}: il ragionamento visto sopra per la scrittura da 2 byte e per la posizione del puntatore nel payload resta perciò valido senza modifiche, e cambia solo il valore effettivamente scritto.
+
+Il Codice~\ref{lst:write_payload} costruisce e invia il payload finale.
+\begin{lstlisting}[
+    language=Python,
+    numbers=none,
+    gobble=4,
+    caption={Calcolo e scrittura di \texttt{debug\_shell\_addr + 5} in \texttt{ret\_pos\_addr}},
+    label={lst:write_payload}
+]
+    # ...
+ 
+    low16 = (debug_shell_addr + 5) & 0xffff
+    spec = f'%{low16}x%12$hn'.encode()
+    pad = (-len(spec)) % 8
+    payload3 = spec + b'\x00' * pad + p64(ret_pos_addr)
+    io.sendline(payload3)
+ 
+    # ...
+
+    low16 = (debug_shell_addr + 5) & 0xffff
+
+    payload3 = f'%{low16}x'.encode() \
+                + b'%12$hn'
+
+    pad = 8 - len(payload3) % 8
+
+    payload3 += b'\x00' * pad \
+                + p64(ret_pos_addr)
+
+    io.sendline(payload3)
+
+    # ...
+\end{lstlisting}
+Il payload è costituito da:
+\begin{itemize}
+    \item % ...
+\end{itemize}
+
+Una volta inviato il payload, la \texttt{printf} di \texttt{log\_message} termina normalmente, eseguendo la scrittura. Una volta arrivato all'istruzione \texttt{ret} però, l'esecuzione riprende da \texttt{debug\_shell} invece che da \texttt{main}, e si apre una shell. Resta da verificare che la shell così ottenuta sia davvero utilizzabile.
+ 
