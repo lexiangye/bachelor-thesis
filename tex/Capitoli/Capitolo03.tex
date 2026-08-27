@@ -83,13 +83,13 @@ Per far ciò, è necessario conoscere sia l'indirizzo della funzione \texttt{deb
 
 Questi indirizzi però vengono randomizzati a causa di PIE (Codice~\ref{lst:checksec_output}) e ASLR, quest'ultima attiva di default a livello di sistema operativo, che complicano ma non rendono impossibile lo sfruttamento, soprattutto grazie alla presenza del ciclo \texttt{while}, che ci permette di iterare più volte sulla \texttt{printf} vulnerabile.
 
-È infatti possibile calcolare l'indirizzo di \texttt{debug\_shell} a partire dal leak di un indirizzo dell'eseguibile, e calcolare l'indirizzo dove è salvato il return address di \texttt{log\_message} a partire dal leak di un indirizzo dello stack. In una successiva iterazione (della stessa esecuzione) è poi possibile sovrascrivere tale return address con l'indirizzo di \texttt{debug\_shell} appena calcolato.
+È infatti possibile calcolare l'indirizzo di \texttt{debug\_shell} a partire dal leak di un indirizzo dell'eseguibile, e calcolare l'indirizzo dove è salvato il return address di \texttt{log\_message} a partire dal leak di un indirizzo dello stack. In una successiva iterazione (della stessa esecuzione) è poi possibile sovrascrivere tale return address con l'indirizzo di \texttt{debug\_shell} appena calcolato.\footnote{In realtà, il binario dichiara il supporto per \texttt{SHSTK} (Codice~\ref{lst:checksec_output}), una protezione pensata proprio contro questo tipo di dirottamento del return address. La sua attivazione a runtime, però, richiede anche il supporto della glibc in uso, presente solo a partire dalla versione 2.39 \cite{glibc2024}, successiva alla 2.35 dell'ambiente di riferimento (Tabella~\ref{tab:ambiente_riferimento}). Risulta perciò dichiarata ma non attiva.}
 
 
 \section{Fase di leak: individuazione degli indirizzi utili}\label{sec:leak_phase}
 Questa prima fase si occupa di scovare tutti gli indirizzi necessari alla conseguente scrittura del return address di \texttt{log\_message}: una scrittura che dirotta il flusso del programma.
 
-\subsection{Leak dell'eseguibile: l'indirizzo di \texttt{debug\_shell}}\label{subsec:bin_leak}
+\subsection{Leak dell'eseguibile: l'indirizzo di debug\_shell}\label{subsec:bin_leak}
 Ogni binario viene caricato in memoria a partire da un indirizzo di \emph{base}: ogni suo elemento si trova a un offset fisso da questa base, lo stesso a ogni esecuzione anche quando la base cambia a causa di ASLR. Per trovare l'indirizzo di \texttt{debug\_shell} basta quindi il leak di un singolo indirizzo dell'eseguibile, da cui ricavare la base sottraendo l'offset noto del punto di leak, per poi risalire a qualunque altro elemento dell'eseguibile sommando il suo offset.
 
 Troviamo un indirizzo del binario all'interno del return address --- salvato dalla chiamata a \texttt{log\_message} --- che punta all'istruzione successiva alla chiamata della funzione stessa dentro \texttt{main}. Tale return address viene depositato implicitamente sullo stack dalla chiamata a \texttt{log\_message} prima che la funzione venga eseguita.
@@ -364,7 +364,7 @@ Questo succede perché il prologo di \texttt{debug\_shell} si aspetta che si ent
         ; ...
 \end{lstlisting}
 
-La correzione è saltare i primi 5 byte di \texttt{debug\_shell}, cioè \texttt{endbr64} e \texttt{push rbp} (causa del disallineamento): il valore da scrivere diventa quindi \texttt{debug\_shell\_addr + 5}. In questo modo nel momento della chiamata a \texttt{system()}, \texttt{rsp} sarà allineato a 16 byte, evitando così 
+La correzione è saltare i primi 5 byte di \texttt{debug\_shell}, cioè \texttt{endbr64} e \texttt{push rbp} (causa del disallineamento): il valore da scrivere diventa quindi \texttt{debug\_shell\_addr + 5}. In questo modo nel momento della chiamata a \texttt{system()}, \texttt{rsp} sarà allineato a 16 byte, evitando così il \texttt{SIGSEGV}.
 
 \texttt{debug\_shell\_addr + 5}, offset \texttt{0x11ce}, cade comunque nella stessa pagina di \texttt{0x11c9} e \texttt{0x123f}: il ragionamento visto sopra per la scrittura da 2 byte resta perciò valido senza modifiche: cambia solo il valore effettivamente scritto.
 
@@ -389,11 +389,10 @@ La correzione è saltare i primi 5 byte di \texttt{debug\_shell}, cioè \texttt{
 \end{lstlisting}
 Il payload è costituito da:
 \begin{itemize}
-    \item \texttt{f'\%\{low16\}x'}: stampa \texttt{low16} caratteri, impostando così il contatore di \texttt{printf} al valore da scrivere (i 16 bit bassi di \texttt{debug\_shell\_addr + 5});
-    \item \texttt{b'\%12\$hn'}: scrive i 2 byte bassi del contatore all'indirizzo presente nel dodicesimo argomento fantasma. La posizione 12 non è casuale: \texttt{buf} occupa la posizione 10, e \texttt{spec} occupa sempre, una volta applicato il padding, 2 qword --- la sua lunghezza varia fra 9 e 13 byte a seconda delle cifre di \texttt{low16} (da 1 a 5), ma arrotondata per eccesso a un multiplo di 8 dà comunque sempre 16. Contando da 10, l'indirizzo finisce dunque in posizione 12;
+    \item \texttt{f`\%\{low16\}x'}: stampa \texttt{low16} caratteri, impostando così il contatore di \texttt{printf} al valore da scrivere (i 16 bit bassi di \texttt{debug\_shell\_addr + 5});
+    \item \texttt{b`\%12\$hn'}: scrive i 2 byte bassi del contatore all'indirizzo presente nel dodicesimo argomento fantasma. La posizione 12 non è casuale, ed è la stessa a ogni esecuzione nonostante \texttt{low16} cambi: la lunghezza di \texttt{spec} varia fra 9 e 13 byte a seconda delle sue cifre (da 1 a 5), ma il padding la riporta sempre a un multiplo di 8 --- cioè, in questo intervallo, sempre a 16 byte, 2 qword esatte. \texttt{spec} e il padding occupano dunque le posizioni 10 e 11 a partire da \texttt{buf}, e l'indirizzo finisce sempre in posizione 12;
     \item \texttt{pad}: numero dei byte di padding, calcolato a runtime in base alla lunghezza di \texttt{spec}, per allineare l'indirizzo che segue a 8 byte;
     \item \texttt{p64(ret\_pos\_addr)}: indirizzo impacchettato in \emph{little endian} su 64 bit, inserito per ultimo per lo stesso motivo della Sezione~\ref{sec:mem_write}: contenendo byte nulli, troncherebbe la lettura di \texttt{printf} se comparisse prima.
 \end{itemize}
 
 Una volta inviato il payload, la \texttt{printf} di \texttt{log\_message} termina normalmente, eseguendo la scrittura. Una volta arrivato all'istruzione \texttt{ret} però, l'esecuzione riprende da \texttt{debug\_shell} invece che da \texttt{main}, e si apre una shell. Resta da verificare che la shell così ottenuta sia davvero utilizzabile.
- 
