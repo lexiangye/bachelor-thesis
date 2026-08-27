@@ -101,15 +101,15 @@ Per il nostro scopo sono rilevanti:
 \end{itemize}
 A differenza degli altri due, che si limitano a stampare un valore, \texttt{n} scrive in memoria. Poter osservare la memoria di un programma è già un rischio; poterla alterare lo è ancora di più. È proprio questa capacità di scrittura, insieme ai meccanismi discussi nella prossima sezione, a rendere la vulnerabilità format string particolarmente pericolosa, come mostrato a partire dal Capitolo~\ref{chapter:fmt_vuln}.
 
-\section{La calling convention x86\_64}\label{sec:callconv}
-Analizziamo la vulnerabilità format string in particolare per l'architettura x86\_64, nota anche come AMD64. Ci interessano le convenzioni utilizzate da tale architettura durante la chiamata di funzione, in particolare dove vengono memorizzati gli argomenti passati alla funzione (ci servirà quando andremo a sfruttare la vulnerabilità).
+\section{La calling convention x86-64}\label{sec:callconv}
+Analizziamo la vulnerabilità format string in particolare per l'architettura x86-64, nota anche come AMD64. Ci interessano le convenzioni utilizzate da tale architettura durante la chiamata di funzione, in particolare dove vengono memorizzati gli argomenti passati alla funzione (ci servirà quando andremo a sfruttare la vulnerabilità).
 
 \subsection{System V AMD64 ABI: registri per il passaggio dei parametri}\label{subsec:sysv_registri}
 \begin{defn}[ABI]\label{def:abi}
 Un'\textbf{ABI} (\emph{Application Binary Interface}) definisce in che modo i diversi componenti di un codice binario possano interfacciarsi su un determinato sistema operativo e una determinata architettura \cite{silberschatz2019}.
 \end{defn}
 
-Tra i molti dettagli di basso livello specificati da un'ABI, quello che riguarda più da vicino la vulnerabilità trattata in questa tesi è la \emph{calling convention}, ovvero l'insieme di regole con cui il chiamante dispone gli argomenti di una funzione affinché il chiamato possa recuperarli correttamente. Per la piattaforma di riferimento (Linux, x86\_64), queste regole sono specificate dalla System V AMD64 ABI, che decide la collocazione di ciascun argomento --- in un registro o sullo stack --- sulla base di una classificazione.
+Tra i molti dettagli di basso livello specificati da un'ABI, quello che riguarda più da vicino la vulnerabilità trattata in questa tesi è la \emph{calling convention}, ovvero l'insieme di regole con cui il chiamante dispone gli argomenti di una funzione affinché il chiamato possa recuperarli correttamente. Per la piattaforma di riferimento (Linux, x86-64), queste regole sono specificate dalla System V AMD64 ABI, che decide la collocazione di ciascun argomento --- in un registro o sullo stack --- sulla base di una classificazione.
 
 Gli argomenti delle funzioni vengono suddivisi in diverse categorie, mappate sulle specifiche famiglie di registri dell'architettura AMD64. Quelli rilevanti ai fini della trattazione della nostra vulnerabilità appartengono alla classe \emph{INTEGER}, costituita dai tipi interi che possono essere contenuti all'interno di uno dei registri \emph{general-purpose} (registri di uso generale).
 
@@ -239,7 +239,7 @@ Qui vengono definiti l'ambiente in cui si lavora e gli strumenti utilizzati.
         Componente & Versione \\
         \midrule
         Sistema operativo & Ubuntu 22.04 LTS \\
-        Architettura & x86\_64 \\
+        Architettura & x86-64 \\
         Compilatore & GCC 11.4.0 \\
         Libreria C & glibc 2.35 \\
         \bottomrule
