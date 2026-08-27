@@ -340,12 +340,13 @@ Rispetto alle scritture del Capitolo~\ref{chapter:fmt_vuln}, cambia la natura de
 
 Poiché tale valore, in decimale, è enorme, non è possibile scriverlo con un'unica \texttt{\%ln}: come nella Sezione~\ref{sec:partial_write}, servirebbero più scritture parziali tramite \texttt{\%hn}, il cui numero e la cui posizione lo script dovrebbe stavolta calcolare a runtime anziché derivarli a mano.
 
-\texttt{debug\_shell\_addr} permette però una scorciatoia che riduce tutto a una singola scrittura. Il suo offset (\texttt{0x11c9}) e l'offset del return address già presente sullo stack (\texttt{0x123f}, l'obiettivo della sovrascrittura) cadono nella stessa \emph{pagina} da \texttt{0x1000} byte del binario: divisi per \texttt{0x1000} danno lo stesso quoziente. Poiché la base scelta da ASLR è sempre allineata a una pagina, ovvero sempre multiplo di \texttt{0x1000}, sommandola a ciascuno dei due offset si ottengono due indirizzi che condividono tutti i bit tranne gli ultimi 12 bit meno significativi, qualunque sia la base scelta. Il valore già presente all'indirizzo \texttt{ret\_pos\_addr} ha perciò già la parte alta corretta per diventare \texttt{debug\_shell\_addr}: resta da cambiare solo la parte bassa, che rientra comodamente in 2 byte. Basta dunque una singola scrittura con \texttt{\%hn}.
+\texttt{debug\_shell\_addr} permette però una scorciatoia che riduce tutto a una singola scrittura. Il suo offset (\texttt{0x11c9}) e l'offset del return address già presente sullo stack (\texttt{0x123f}, l'obiettivo della sovrascrittura) cadono nella stessa \emph{pagina} da \texttt{0x1000} byte del binario: divisi per \texttt{0x1000} danno lo stesso quoziente. Poiché la base scelta da ASLR è sempre allineata a una pagina, ovvero sempre multiplo di \texttt{0x1000}, sommandola a ciascuno dei due offset si ottengono due indirizzi che condividono tutti i bit tranne i 12 bit meno significativi, qualunque sia la base scelta. Il valore già presente all'indirizzo \texttt{ret\_pos\_addr} ha perciò già la parte alta corretta per diventare \texttt{debug\_shell\_addr}: resta da cambiare solo la parte bassa, che rientra comodamente in 2 byte. Basta dunque una singola scrittura con \texttt{\%hn}.
 
 Scrivere \texttt{debug\_shell\_addr} così com'è, però, non basta: la scrittura riesce, ma l'esecuzione successiva termina con un crash (\texttt{SIGSEGV}).
 La causa è l'allineamento dello stack richiesto dalla System V AMD64 ABI: subito prima di ogni chiamata, \texttt{rsp} deve essere un multiplo di 16 byte \cite{psabi2025}.
+
 Quando ritorniamo all'indirizzo di \texttt{debug\_shell}, \texttt{rsp} è allineato a 16 byte, però l'istruzione \texttt{push rbp} lo disallinea. La chiamata a \texttt{system@plt} (Codice~\ref{lst:disas_debug_shell}) si ritrova così \texttt{rsp} disallineato di 8 byte e la \texttt{system()} di glibc non lo tollera.
-Questo succede perché il prologo di \texttt{debug\_shell} si aspetta che si entri nella funzione con un'istruzione \texttt{call} che salva il return address, disallineando lo stack che poi viene riallineato dal salvataggio di \texttt{rbp}.
+Questo succede perché il prologo di \texttt{debug\_shell} si aspetta di essere raggiunto tramite un'istruzione \texttt{call}: il salvataggio del return address che essa compie disallinea lo stack di 8 byte, disallineamento poi corretto dal successivo salvataggio di \texttt{rbp}
 \begin{lstlisting}[
     language={},
     numbers=none,
@@ -361,10 +362,10 @@ Questo succede perché il prologo di \texttt{debug\_shell} si aspetta che si ent
         11d8:	mov    rdi,rax
         11db:	call   10b0 <system@plt>
         
-        ; ...
+    ; ...
 \end{lstlisting}
 
-La correzione è saltare i primi 5 byte di \texttt{debug\_shell}, cioè \texttt{endbr64} e \texttt{push rbp} (causa del disallineamento): il valore da scrivere diventa quindi \texttt{debug\_shell\_addr + 5}. In questo modo nel momento della chiamata a \texttt{system()}, \texttt{rsp} sarà allineato a 16 byte, evitando così il \texttt{SIGSEGV}.
+La correzione è saltare i primi 5 byte di \texttt{debug\_shell}, cioè \texttt{endbr64} e \texttt{push rbp} (causa del disallineamento): il valore da scrivere diventa quindi \texttt{debug\_shell\_addr + 5}. In questo modo nel momento della chiamata a \texttt{system()}, \texttt{rsp} è allineato a 16 byte, evitando così il \texttt{SIGSEGV}.
 
 \texttt{debug\_shell\_addr + 5}, offset \texttt{0x11ce}, cade comunque nella stessa pagina di \texttt{0x11c9} e \texttt{0x123f}: il ragionamento visto sopra per la scrittura da 2 byte resta perciò valido senza modifiche: cambia solo il valore effettivamente scritto.
 
@@ -390,7 +391,7 @@ La correzione è saltare i primi 5 byte di \texttt{debug\_shell}, cioè \texttt{
 Il payload è costituito da:
 \begin{itemize}
     \item \texttt{f\textquotesingle\%\{low16\}x\textquotesingle}: stampa \texttt{low16} caratteri, impostando così il contatore di \texttt{printf} al valore da scrivere (i 16 bit bassi di \texttt{debug\_shell\_addr + 5});
-    \item \texttt{b\textquotesingle\%12\$hn\textquotesingle}: scrive i 2 byte bassi del contatore all'indirizzo presente nel dodicesimo argomento fantasma. La posizione 12 non è casuale, ed è la stessa a ogni esecuzione nonostante \texttt{low16} cambi: la lunghezza di \texttt{spec} varia fra 9 e 13 byte a seconda delle sue cifre (da 1 a 5), ma il padding la riporta sempre a un multiplo di 8 --- cioè, in questo intervallo, sempre a 16 byte, 2 qword esatte. \texttt{spec} e il padding occupano dunque le posizioni 10 e 11 a partire da \texttt{buf}, e l'indirizzo finisce sempre in posizione 12;
+    \item \texttt{b\textquotesingle\%12\$hn\textquotesingle}: scrive i 2 byte bassi del contatore all'indirizzo presente nel dodicesimo argomento fantasma. La posizione 12 non è casuale, ed è la stessa a ogni esecuzione nonostante \texttt{low16} cambi: la lunghezza di \texttt{spec} varia fra 11 e 13 byte a seconda delle sue cifre (da 3 a 5), ma il padding la riporta sempre a 16 byte, cioè 2 qword esatte. \texttt{spec} e il padding occupano dunque le prime due qword di \texttt{buf} (posizioni 10 e 11), e l'indirizzo finisce sempre in posizione 12;
     \item \texttt{pad}: numero dei byte di padding, calcolato a runtime in base alla lunghezza di \texttt{spec}, per allineare l'indirizzo che segue a 8 byte;
     \item \texttt{p64(ret\_pos\_addr)}: indirizzo impacchettato in \emph{little endian} su 64 bit, inserito per ultimo per lo stesso motivo della Sezione~\ref{sec:mem_write}: contenendo byte nulli, troncherebbe la lettura di \texttt{printf} se comparisse prima.
 \end{itemize}
