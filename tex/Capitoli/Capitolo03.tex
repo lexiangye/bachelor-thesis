@@ -389,8 +389,8 @@ La correzione è saltare i primi 5 byte di \texttt{debug\_shell}, cioè \texttt{
 \end{lstlisting}
 Il payload è costituito da:
 \begin{itemize}
-    \item \texttt{f`\%\{low16\}x'}: stampa \texttt{low16} caratteri, impostando così il contatore di \texttt{printf} al valore da scrivere (i 16 bit bassi di \texttt{debug\_shell\_addr + 5});
-    \item \texttt{b`\%12\$hn'}: scrive i 2 byte bassi del contatore all'indirizzo presente nel dodicesimo argomento fantasma. La posizione 12 non è casuale, ed è la stessa a ogni esecuzione nonostante \texttt{low16} cambi: la lunghezza di \texttt{spec} varia fra 9 e 13 byte a seconda delle sue cifre (da 1 a 5), ma il padding la riporta sempre a un multiplo di 8 --- cioè, in questo intervallo, sempre a 16 byte, 2 qword esatte. \texttt{spec} e il padding occupano dunque le posizioni 10 e 11 a partire da \texttt{buf}, e l'indirizzo finisce sempre in posizione 12;
+    \item \texttt{f\textquotesingle\%\{low16\}x\textquotesingle}: stampa \texttt{low16} caratteri, impostando così il contatore di \texttt{printf} al valore da scrivere (i 16 bit bassi di \texttt{debug\_shell\_addr + 5});
+    \item \texttt{b\textquotesingle\%12\$hn\textquotesingle}: scrive i 2 byte bassi del contatore all'indirizzo presente nel dodicesimo argomento fantasma. La posizione 12 non è casuale, ed è la stessa a ogni esecuzione nonostante \texttt{low16} cambi: la lunghezza di \texttt{spec} varia fra 9 e 13 byte a seconda delle sue cifre (da 1 a 5), ma il padding la riporta sempre a un multiplo di 8 --- cioè, in questo intervallo, sempre a 16 byte, 2 qword esatte. \texttt{spec} e il padding occupano dunque le posizioni 10 e 11 a partire da \texttt{buf}, e l'indirizzo finisce sempre in posizione 12;
     \item \texttt{pad}: numero dei byte di padding, calcolato a runtime in base alla lunghezza di \texttt{spec}, per allineare l'indirizzo che segue a 8 byte;
     \item \texttt{p64(ret\_pos\_addr)}: indirizzo impacchettato in \emph{little endian} su 64 bit, inserito per ultimo per lo stesso motivo della Sezione~\ref{sec:mem_write}: contenendo byte nulli, troncherebbe la lettura di \texttt{printf} se comparisse prima.
 \end{itemize}

@@ -348,9 +348,9 @@ Per effettuare questa operazione, si può utilizzare la libreria \texttt{pwntool
 \end{lstlisting}
 Il \emph{payload} è costituito da:
 \begin{itemize}
-    \item \texttt{b`\%4919x'}: stampa parte del contenuto del primo argomento fantasma, riempito di spazi fino ad arrivare a \texttt{4919} caratteri. Questa operazione serve a impostare il contatore dei caratteri stampati per il successivo \texttt{\%ln};
-    \item \texttt{b`\%8\$ln'}: scrittura del numero di caratteri stampati finora da \texttt{printf} all'indirizzo presente nell'ottavo argomento fantasma. La posizione 8 non è casuale: \texttt{buf} occupa la posizione 6 e i due specificatori che la precedono nel payload (\texttt{\%4919x} e \texttt{\%8\$ln} stessi, 11 byte in tutto) più i 5 byte di padding portano l'indirizzo a occupare la terza qword di \texttt{buf} --- cioè, contando da 6, la posizione 8;
-    \item \texttt{b`\textbackslash{}x00' * 5}, cinque byte di padding in modo che l'indirizzo inserito sia allineato a 8 byte;
+    \item \texttt{b\textquotesingle\%4919x\textquotesingle}: stampa parte del contenuto del primo argomento fantasma, riempito di spazi fino ad arrivare a \texttt{4919} caratteri. Questa operazione serve a impostare il contatore dei caratteri stampati per il successivo \texttt{\%ln};
+    \item \texttt{b\textquotesingle\%8\$ln\textquotesingle}: scrittura del numero di caratteri stampati finora da \texttt{printf} all'indirizzo presente nell'ottavo argomento fantasma. La posizione 8 non è casuale: \texttt{buf} occupa la posizione 6 e i due specificatori che la precedono nel payload (\texttt{\%4919x} e \texttt{\%8\$ln} stessi, 11 byte in tutto) più i 5 byte di padding portano l'indirizzo a occupare la terza qword di \texttt{buf} --- cioè, contando da 6, la posizione 8;
+    \item \texttt{b\textquotesingle\textbackslash{}x00\textquotesingle{} * 5}, cinque byte di padding in modo che l'indirizzo inserito sia allineato a 8 byte;
     \item \texttt{p64(0x404050)}: indirizzo impacchettato in \emph{little endian} in 64 bit. Viene inserito alla fine del payload perché contiene byte nulli (\texttt{\textbackslash{}x00}): se fosse posizionato prima, la \texttt{printf} li interpreterebbe come fine della stringa e smetterebbe di leggerla.
 \end{itemize}
 
@@ -391,9 +391,9 @@ Vediamo l'estratto Python per la scrittura parziale e analizziamo come è costru
 \end{lstlisting}
 Il payload è costituito da:
 \begin{itemize}
-    \item \texttt{b`\%48879x'} + \texttt{b`\%10\$hn'}: il padding porta il contatore di caratteri stampati a \texttt{48879} (\texttt{0xbeef}) e \texttt{\%10\$hn} scrive quel valore all'indirizzo contenuto nel decimo argomento fantasma, \texttt{0x404050};
-    \item \texttt{b`\%8126x'} + \texttt{b`\%11\$hn'}: altri \texttt{8126} caratteri portano il contatore a \texttt{57005} (\texttt{0xdead}) e \texttt{\%11\$hn} scrive questo secondo valore all'indirizzo presente nell'undicesimo argomento fantasma, \texttt{0x404050 + 2};
-    \item \texttt{b`\textbackslash{}x00' * 7}: byte di riempimento per allineare i due indirizzi a 8 byte all'interno di \texttt{buf}, per lo stesso motivo della Sezione~\ref{sec:mem_write};
+    \item \texttt{b\textquotesingle\%48879x\textquotesingle} + \texttt{b\textquotesingle\%10\$hn\textquotesingle}: il padding porta il contatore di caratteri stampati a \texttt{48879} (\texttt{0xbeef}) e \texttt{\%10\$hn} scrive quel valore all'indirizzo contenuto nel decimo argomento fantasma, \texttt{0x404050};
+    \item \texttt{b\textquotesingle\%8126x\textquotesingle} + \texttt{b\textquotesingle\%11\$hn\textquotesingle}: altri \texttt{8126} caratteri portano il contatore a \texttt{57005} (\texttt{0xdead}) e \texttt{\%11\$hn} scrive questo secondo valore all'indirizzo presente nell'undicesimo argomento fantasma, \texttt{0x404050 + 2};
+    \item \texttt{b\textquotesingle\textbackslash{}x00\textquotesingle{} * 7}: byte di riempimento per allineare i due indirizzi a 8 byte all'interno di \texttt{buf}, per lo stesso motivo della Sezione~\ref{sec:mem_write};
     \item \texttt{p64(0x404050)} e \texttt{p64(0x404050 + 2)}: i due indirizzi per le scritture parziali.
 \end{itemize}
 La posizione usata per ciascun indirizzo è sempre ricavata contando i byte: \texttt{buf} occupa la posizione 6, e i quattro specificatori di testo del payload (\texttt{\%48879x}, \texttt{\%10\$hn}, \texttt{\%8126x}, \texttt{\%11\$hn}, 25 byte in tutto) più 7 byte di allineamento portano i due indirizzi a occupare la quinta e la sesta qword di \texttt{buf}, cioè le posizioni 10 e 11 (Codice~\ref{lst:python_partial_write}).
