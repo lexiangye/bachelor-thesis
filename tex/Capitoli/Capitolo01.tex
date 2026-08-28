@@ -228,7 +228,7 @@ Vedremo nel Capitolo~\ref{chapter:fmt_vuln} come questo comportamento permetta a
 Qui vengono definiti l'ambiente in cui si lavora e gli strumenti utilizzati.
 
 \subsection{Ambiente di riferimento: Linux e glibc}\label{subsec:env}
-È fondamentale specificare l'ambiente perché i meccanismi visti finora non dipendono solo dall'architettura, ma dalla ABI e dalla libreria C effettivamente in uso (come per gli specificatori posizionali \texttt{n\$} discussi nella Sezione~\ref{sec:funcvar_format}).
+È fondamentale specificare l'ambiente (Tabella~\ref{tab:ambiente_riferimento}) perché i meccanismi visti finora non dipendono solo dall'architettura, ma anche dalla ABI e dalla libreria C effettivamente in uso (come per gli specificatori posizionali \texttt{n\$} discussi nella Sezione~\ref{sec:funcvar_format}).
 
 \begin{table}[ht]
     \centering
@@ -245,8 +245,6 @@ Qui vengono definiti l'ambiente in cui si lavora e gli strumenti utilizzati.
         \bottomrule
     \end{tabular}
 \end{table}
-
-Il Dockerfile che fissa questi componenti in modo riproducibile è disponibile nel repository del progetto \cite{repo_poc}.
 
 \subsection{Strumenti utilizzati}\label{subsec:tools}
 Questi strumenti ci servono per analizzare il binario vulnerabile e crearci uno script che lo sfrutti (\emph{exploit}):
