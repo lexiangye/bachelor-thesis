@@ -1,6 +1,6 @@
-# Format String Vulnerabilities — PoC
+# Vulnerabilità format string — PoC
 
-Proof-of-concept a supporto della tesi triennale *"Vulnerabilità Format String: teoria, sfruttamento e mitigazioni"* (Lexiang Ye, Università di Parma).
+Proof-of-concept a supporto della tesi triennale *"Vulnerabilità format string: teoria, sfruttamento e mitigazioni"* (Lexiang Ye, Università di Parma).
 
 Contiene un ambiente Docker riproducibile e gli exploit discussi nei Capitoli 2 e 3: dimostrazioni isolate di leak/write via format string (§2.2–2.4) e lo sviluppo completo di un exploit end-to-end (Cap. 3).
 
@@ -35,10 +35,11 @@ Ambiente pinnato: Ubuntu 22.04 LTS, glibc 2.35, GCC 11.4.0. Strumenti principali
 
 ```bash
 cd environment
-docker compose up --build
+docker compose up -d --build       # build e avvio del container
+docker compose exec bin-exp bash   # apre una bash interattiva nel container
 ```
 
-Apre una bash dentro al container con l'intera repo montata su `/poc`.
+La bash parte in `/poc`, con l'intera repo montata su quella cartella. Per fermare il container: `docker compose down`.
 
 ## Build dei target
 
@@ -48,6 +49,7 @@ Dentro al container:
 cd /poc/targets
 make
 ```
+I binari compilati non sono versionati (vedi `.gitignore`): si costruiscono da sorgente a ogni build, così il sorgente resta l'unica fonte di verità.
 
 ## Target -> sezioni della tesi
 
