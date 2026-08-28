@@ -83,7 +83,7 @@ Per far ciò, è necessario conoscere sia l'indirizzo della funzione \texttt{deb
 
 Questi indirizzi però vengono randomizzati a causa di PIE (Codice~\ref{lst:checksec_output}) e ASLR, quest'ultima attiva di default a livello di sistema operativo, che complicano ma non rendono impossibile lo sfruttamento, soprattutto grazie alla presenza del ciclo \texttt{while}, che ci permette di iterare più volte sulla \texttt{printf} vulnerabile.
 
-È infatti possibile calcolare l'indirizzo di \texttt{debug\_shell} a partire dal leak di un indirizzo dell'eseguibile, e calcolare l'indirizzo dove è salvato il return address di \texttt{log\_message} a partire dal leak di un indirizzo dello stack. In una successiva iterazione (della stessa esecuzione) è poi possibile sovrascrivere tale return address con l'indirizzo di \texttt{debug\_shell} appena calcolato.\footnote{In realtà, il binario dichiara il supporto per \texttt{SHSTK} (Codice~\ref{lst:checksec_output}), una protezione pensata proprio contro questo tipo di dirottamento del return address. La sua attivazione a runtime, però, richiede anche il supporto della glibc in uso, presente solo a partire dalla versione 2.39 \cite{glibc2024}, successiva alla 2.35 dell'ambiente di riferimento (Tabella~\ref{tab:ambiente_riferimento}). Risulta perciò dichiarata ma non attiva.}
+È infatti possibile calcolare l'indirizzo di \texttt{debug\_shell} a partire dal leak di un indirizzo dell'eseguibile e calcolare l'indirizzo dove è salvato il return address di \texttt{log\_message} a partire dal leak di un indirizzo dello stack. In una successiva iterazione (della stessa esecuzione) è poi possibile sovrascrivere tale return address con l'indirizzo di \texttt{debug\_shell} appena calcolato.\footnote{In realtà, il binario dichiara il supporto per \texttt{SHSTK} (Codice~\ref{lst:checksec_output}), una protezione pensata proprio contro questo tipo di dirottamento del return address. La sua attivazione a runtime, però, richiede anche il supporto della glibc in uso, presente solo a partire dalla versione 2.39 \cite{glibc2024}, successiva alla 2.35 dell'ambiente di riferimento (Tabella~\ref{tab:ambiente_riferimento}). Risulta perciò dichiarata ma non attiva.}
 
 
 \section{Fase di leak: individuazione degli indirizzi utili}\label{sec:leak_phase}
@@ -177,7 +177,7 @@ Il return address è quindi la quarta qword a partire dalla cima dello stack, e 
     # ...
 \end{lstlisting}
 
-Restano da conoscere due soli valori per poter calcolare l'indirizzo di \texttt{debug\_shell}: l'offset del punto in cui abbiamo effettuato il leak, e l'offset di \texttt{debug\_shell} stessa. Entrambi si ricavano dal disassemblato di \texttt{objdump} (Codice~\ref{lst:debug_shell_offset}), che per un binario con PIE mostra gli indirizzi delle istruzioni come offset rispetto alla base --- e non come indirizzi assoluti, come accadrebbe altrimenti.
+Restano da conoscere due soli valori per poter calcolare l'indirizzo di \texttt{debug\_shell}: l'offset del punto in cui abbiamo effettuato il leak e l'offset di \texttt{debug\_shell} stessa. Entrambi si ricavano dal disassemblato di \texttt{objdump} (Codice~\ref{lst:debug_shell_offset}), che per un binario con PIE mostra gli indirizzi delle istruzioni come offset rispetto alla base --- e non come indirizzi assoluti, come accadrebbe altrimenti.
 \begin{lstlisting}[
     language={},
     numbers=none,
@@ -431,7 +431,7 @@ La correzione è saltare i primi 5 byte di \texttt{debug\_shell}, cioè \texttt{
 
 \texttt{debug\_shell\_addr + 5}, offset \texttt{0x11ce}, cade comunque nella stessa pagina di \texttt{0x11c9} e \texttt{0x123f}: il ragionamento visto sopra per la scrittura da 2 byte resta perciò valido senza modifiche: cambia solo il valore effettivamente scritto.
 
-\texttt{buf} è la quinta qword a partire da \texttt{rsp} (Figura~\ref{fig:stack_ret_addr}), e corrisponde perciò al decimo specificatore della format string (cinque registri general-purpose più cinque qword dello stack). Il Codice~\ref{lst:write_payload} costruisce e invia il payload finale.
+\texttt{buf} è la quinta qword a partire da \texttt{rsp} (Figura~\ref{fig:stack_ret_addr}) e corrisponde perciò al decimo specificatore della format string (cinque registri general-purpose più cinque qword dello stack). Il Codice~\ref{lst:write_payload} costruisce e invia il payload finale.
 \begin{lstlisting}[
     language=Python,
     numbers=none,
@@ -453,7 +453,7 @@ La correzione è saltare i primi 5 byte di \texttt{debug\_shell}, cioè \texttt{
 Il payload è costituito da:
 \begin{itemize}
     \item \texttt{f\textquotesingle\%\{low16\}x\textquotesingle}: stampa \texttt{low16} caratteri, impostando così il contatore di \texttt{printf} al valore da scrivere (i 16 bit bassi di \texttt{debug\_shell\_addr + 5});
-    \item \texttt{b\textquotesingle\%12\$hn\textquotesingle}: scrive i 2 byte bassi del contatore all'indirizzo presente nel dodicesimo argomento fantasma. La posizione 12 non è casuale, ed è la stessa a ogni esecuzione nonostante \texttt{low16} cambi: la lunghezza di \texttt{spec} varia fra 11 e 13 byte a seconda delle sue cifre (da 3 a 5), ma il padding la riporta sempre a 16 byte, cioè 2 qword esatte. \texttt{spec} e il padding occupano dunque le prime due qword di \texttt{buf} (posizioni 10 e 11), e l'indirizzo finisce sempre in posizione 12;
+    \item \texttt{b\textquotesingle\%12\$hn\textquotesingle}: scrive i 2 byte bassi del contatore all'indirizzo presente nel dodicesimo argomento fantasma. La posizione 12 non è casuale ed è la stessa a ogni esecuzione nonostante \texttt{low16} cambi: la lunghezza di \texttt{spec} varia fra 11 e 13 byte a seconda delle sue cifre (da due a cinque), ma il padding la riporta sempre a 16 byte, cioè due qword esatte. \texttt{spec} e il padding occupano dunque le prime due qword di \texttt{buf} (posizioni 10 e 11), e l'indirizzo finisce sempre in posizione 12;
     \item \texttt{pad}: numero dei byte di padding, calcolato a runtime in base alla lunghezza di \texttt{spec}, per allineare l'indirizzo che segue a 8 byte;
     \item \texttt{p64(ret\_pos\_addr)}: indirizzo impacchettato in \emph{little endian} su 64 bit, inserito per ultimo per lo stesso motivo della Sezione~\ref{sec:mem_write}: contenendo byte nulli, troncherebbe la lettura di \texttt{printf} se comparisse prima.
 \end{itemize}

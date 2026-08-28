@@ -272,7 +272,7 @@ La posizione di \texttt{buf} deve essere individuata nello stesso modo in cui ab
 
     ; ...
 \end{lstlisting}
-Vengono allocati \texttt{0x50} byte di spazio per le variabili locali e \texttt{buf} è situato proprio in cima a tale spazio, ovvero a \texttt{rbp-0x50}. Non ci sono altre azioni che modificano \texttt{rsp} prima della chiamata alla \texttt{printf} vulnerabile, che quindi si ritrova con lo stack nello stato illustrato in Figura~\ref{fig:stack_write_demo}.
+Vengono allocati \texttt{0x50} byte (80 in decimale) di spazio per le variabili locali e \texttt{buf} è situato proprio in cima a tale spazio, ovvero a \texttt{rbp-0x50}. Non ci sono altre azioni che modificano \texttt{rsp} prima della chiamata alla \texttt{printf} vulnerabile, che quindi si ritrova con lo stack nello stato illustrato in Figura~\ref{fig:stack_write_demo}.
 
 \begin{figure}[ht]
     \centering
@@ -350,7 +350,7 @@ Il \emph{payload} è costituito da:
 \begin{itemize}
     \item \texttt{b\textquotesingle\%4919x\textquotesingle}: stampa parte del contenuto del primo argomento fantasma, riempito di spazi fino ad arrivare a \texttt{4919} caratteri. Questa operazione serve a impostare il contatore dei caratteri stampati per il successivo \texttt{\%ln};
     \item \texttt{b\textquotesingle\%8\$ln\textquotesingle}: scrittura del numero di caratteri stampati finora da \texttt{printf} all'indirizzo presente nell'ottavo argomento fantasma. La posizione 8 non è casuale: \texttt{buf} occupa la posizione 6 e i due specificatori che la precedono nel payload (\texttt{\%4919x} e \texttt{\%8\$ln} stessi, 11 byte in tutto) più i 5 byte di padding portano l'indirizzo a occupare la terza qword di \texttt{buf} --- cioè, contando da 6, la posizione 8;
-    \item \texttt{b\textquotesingle\textbackslash{}x00\textquotesingle{} * 5}, cinque byte di padding in modo che l'indirizzo inserito sia allineato a 8 byte;
+    \item \texttt{b\textquotesingle\textbackslash{}x00\textquotesingle{} * 5}, 5 byte di padding in modo che l'indirizzo inserito sia allineato a 8 byte;
     \item \texttt{p64(0x404050)}: indirizzo impacchettato in \emph{little endian} in 64 bit. Viene inserito alla fine del payload perché contiene byte nulli (\texttt{\textbackslash{}x00}): se fosse posizionato prima, la \texttt{printf} li interpreterebbe come fine della stringa e smetterebbe di leggerla.
 \end{itemize}
 

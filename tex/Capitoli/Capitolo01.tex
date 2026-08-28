@@ -114,7 +114,7 @@ Tra i molti dettagli di basso livello specificati da un'ABI, quello che riguarda
 Gli argomenti delle funzioni vengono suddivisi in diverse categorie, mappate sulle specifiche famiglie di registri dell'architettura AMD64. Quelli rilevanti ai fini della trattazione della nostra vulnerabilità appartengono alla classe \emph{INTEGER}, costituita dai tipi interi che possono essere contenuti all'interno di uno dei registri \emph{general-purpose} (registri di uso generale).
 
 I tipi base (con segno e senza segno) appartenenti alla classe INTEGER sono: \texttt{\_Bool}, \texttt{char}, \texttt{short}, \texttt{int}, \texttt{long}, \texttt{long long} e puntatori.
-La dimensione di ciascun argomento viene arrotondata per eccesso a otto byte. Di conseguenza, lo stack risulta sempre allineato a otto byte \cite{psabi2025}.
+La dimensione di ciascun argomento viene arrotondata per eccesso a 8 byte. Di conseguenza, lo stack risulta sempre allineato a 8 byte \cite{psabi2025}.
 
 Per gli argomenti di classe INTEGER, il passaggio avviene assegnandoli da sinistra verso destra al primo registro disponibile nella sequenza: \texttt{\%rdi}, \texttt{\%rsi}, \texttt{\%rdx}, \texttt{\%rcx}, \texttt{\%r8}, \texttt{\%r9} (Tabella~\ref{tab:registri_integer}).
 Completata questa assegnazione ai registri, gli argomenti rimanenti (destinati alla memoria) vengono inseriti nello stack in ordine inverso, ovvero da destra verso sinistra \cite{psabi2025}.
@@ -140,7 +140,7 @@ Completata questa assegnazione ai registri, gli argomenti rimanenti (destinati a
 \end{table}
 
 \subsection{Il caso delle funzioni variadiche}\label{subsec:funvar_cc}
-Le funzioni standard, a parametri fissi, applicano la calling convention senza difficoltà, poiché conoscono in anticipo numero e tipo degli argomenti che vengono loro passati, e sanno dunque già dove reperirli.
+Le funzioni standard, a parametri fissi, applicano la calling convention senza difficoltà, poiché conoscono in anticipo numero e tipo degli argomenti che vengono loro passati e sanno dunque già dove reperirli.
 
 Le funzioni variadiche, invece, non sanno in anticipo quanti argomenti riceveranno, né se si trovino nei registri o sullo stack.
 Come visto nella Sezione~\ref{sec:funcvar_format}, le funzioni variadiche gestiscono gli argomenti aggiuntivi tramite l'header \texttt{<stdarg.h>}, come se fossero una lista. Però non abbiamo specificato l'implementazione di questa lista, che dipende dalla ABI effettivamente in uso. Vediamo dunque come \texttt{<stdarg.h>} sia implementato concretamente secondo la System V AMD64 ABI.
