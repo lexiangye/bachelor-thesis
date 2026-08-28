@@ -1,6 +1,6 @@
 services:
   bin-exp:
-    container_name: lexiang-binary
+    container_name: bin-exp
     hostname: ubuntu22.04
     build: .
     image: lexiangye/ubuntu22.04-binary:latest
