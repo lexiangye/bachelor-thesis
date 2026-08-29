@@ -496,7 +496,7 @@ Finora abbiamo visto solo estratti di script Python. Il Codice~\ref{lst:full_exp
     io.recvrepeat(timeout=1)
     io.interactive()
 \end{lstlisting}
-Le prime righe hanno il compito di impostare il contesto di \texttt{pwntools} e di preparare il binario e il canale bidirezionale per comunicare con esso. L'istruzione \texttt{ELF(\textquotesingle./vuln\_service\textquotesingle)} carica il binario. \texttt{context.binary = exe} imposta poi il contesto globale di \texttt{pwntools} (architettura e ordine dei byte), che ne definisce il comportamento delle sue funzioni. L'istruzione \texttt{exe.process()} avvia infine il binario e restituisce il canale di comunicazione bidirezionale \texttt{io} già usato nelle sezioni precedenti, che permette allo script di interagire con il programma.
+Le prime righe hanno il compito di impostare il contesto di \texttt{pwntools} e di preparare il binario e il canale bidirezionale per comunicare con esso. L'istruzione \texttt{ELF(\textquotesingle./vuln\_service\textquotesingle)} carica il binario. \texttt{context.binary = exe} imposta poi il contesto globale di \texttt{pwntools} (architettura e ordine dei byte), che definisce il comportamento delle sue funzioni. L'istruzione \texttt{exe.process()} avvia infine il binario e restituisce il canale di comunicazione bidirezionale \texttt{io} già usato nelle sezioni precedenti, che permette allo script di interagire con il programma.
 
 Le ultime due righe invece gestiscono la fase finale quando tutti i payload sono stati inviati. Usiamo \texttt{io.recvrepeat(timeout=1)} per scartare l'output di decine di migliaia di caratteri provocato dal \texttt{payload3} (Sezione~\ref{sec:write_phase}): altrimenti \texttt{io.interactive()} si sarebbe attaccato subito a \texttt{stdout}, stampando a schermo tutti quei caratteri. L'istruzione \texttt{io.interactive()} inoltra invece l'input del terminale al processo e ne restituisce a schermo l'output, permettendo di interagire con la shell ottenuta e verificarne il funzionamento. Il Codice~\ref{lst:shell_proof} mostra l'output di un'esecuzione reale.
 \begin{lstlisting}[
@@ -516,6 +516,6 @@ Le ultime due righe invece gestiscono la fase finale quando tutti i payload sono
 \end{lstlisting}
 Abbiamo dunque ottenuto veramente una shell: l'exploit può dirsi concluso con successo.
 
-Nessuna delle protezioni di default applicate dal compilatore GCC (Codice~\ref{lst:checksec_output}) nell'ambiente di riferimento (Tabella~\ref{tab:ambiente_riferimento}) impedisce di causare leak di informazioni e di effettuare scritture in memoria. L'unica che ci avvisa del pericolo, con un warning durante la compilazione, è l'opzione di default \texttt{-Wformat-security}.
+Nessuna delle protezioni di default applicate dal compilatore GCC (Codice~\ref{lst:checksec_output}) nell'ambiente di riferimento (Tabella~\ref{tab:ambiente_riferimento}) impedisce di causare leak di informazioni e di eseguire scritture in memoria. 
 
 Fermare questa vulnerabilità richiede protezioni pensate apposta contro la format string, non le protezioni generiche appena discusse. Il Capitolo~4 le presenta, insieme a un caso concreto in cui anche queste non sono bastate a fermare l'attacco.
