@@ -56,7 +56,9 @@ Di conseguenza, un attaccante può rompere facilmente la regola secondo cui ogni
     }
 \end{lstlisting}
 Come detto nella Sezione~\ref{sec:callconv}, se uno specificatore non corrisponde a nessun argomento passato alla \texttt{printf}, esso va ad agire su dati residui presenti sui registri o sullo stack, in base ai valori correnti degli offset di \texttt{va\_list}.
-Questo permette all'attaccante di causare leak di informazioni o addirittura di eseguire scritture in memoria.\footnote{Nell'ambiente di riferimento (Tabella~\ref{tab:ambiente_riferimento}), una \texttt{printf} senza altri argomenti e con format string non costante fa scattare di default l'avviso \texttt{-Wformat-security}, come nel Codice~\ref{lst:wrong_fmt}; basta però un solo argomento in più, anche innocuo, affinché l'avviso scompaia. La format string resta comunque vulnerabile \cite{gccwopts}.}
+Questo permette all'attaccante di causare leak di informazioni o addirittura di eseguire scritture in memoria.
+
+Nell'ambiente di riferimento (Tabella~\ref{tab:ambiente_riferimento}), una \texttt{printf} come quella appena mostrata (Codice~\ref{lst:wrong_fmt}) --- con format string non costante e senza altri argomenti --- fa scattare di default l'avviso \texttt{-Wformat-security}. Basta però un solo argomento in più, anche innocuo, affinché l'avviso scompaia: la format string resta comunque vulnerabile \cite{gccwopts}.
 
 
 \section{Information disclosure: individuare e leggere un valore con \%x}\label{sec:info_disclosure}
