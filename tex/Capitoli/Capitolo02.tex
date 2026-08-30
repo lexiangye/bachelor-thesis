@@ -330,7 +330,7 @@ Come per la lettura in Sezione~\ref{sec:info_disclosure}, anche \texttt{global\_
 
 È necessario inserire tale indirizzo, allineato a 8 byte, all'interno di \texttt{buf} e far sì che vengano stampati esattamente \texttt{4919} caratteri (\texttt{0x1337} in esadecimale) prima che venga incontrato lo specificatore \texttt{\%ln} usato per la scrittura.
 
-Per effettuare questa operazione, si può utilizzare la libreria \texttt{pwntools} in uno script Python (Codice~\ref{lst:python_write}).
+Per effettuare questa operazione, si può utilizzare la libreria \texttt{pwntools} in uno script Python (Codice~\ref{lst:python_write}); la versione completa dello script è riportata nel Codice~\ref{lst:app_write_script} (Appendice~\ref{app:source}).
 \begin{lstlisting}[
     language=Python,
     numbers=none,
@@ -372,7 +372,7 @@ Poiché l'ambiente di riferimento (Tabella~\ref{tab:ambiente_riferimento}) ha l'
 
 Inoltre, trattandosi di un'unica chiamata a \texttt{printf}, il contatore dei caratteri stampati può solo crescere, quindi le due scritture vanno ordinate per valore, non per indirizzo. Tra \texttt{0xbeef} (\texttt{48879} in decimale) e \texttt{0xdead} (\texttt{57005}), il primo è più piccolo e va scritto per primo. 
 
-Vediamo l'estratto Python per la scrittura parziale e analizziamo come è costruito il payload (Codice~\ref{lst:python_partial_write}).
+Vediamo l'estratto Python per la scrittura parziale e analizziamo come è costruito il payload (Codice~\ref{lst:python_partial_write}); come per lo script precedente, la versione completa è riportata nel Codice~\ref{lst:app_partial_write_script} (Appendice~\ref{app:source}).
 \begin{lstlisting}[
     language=Python,
     numbers=none,

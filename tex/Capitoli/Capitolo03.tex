@@ -42,7 +42,7 @@ Tale configurazione è il default del compilatore GCC nel nostro ambiente (Tabel
 
 I comandi \texttt{file} e \texttt{pwn checksec} danno una prima idea del binario --- il tipo di disassemblato che si otterrà, le convenzioni in uso, le protezioni da affrontare --- ma nulla sulla logica del codice: per quella servono il disassemblato e il decompilato, entrambi ottenibili con \texttt{Ghidra}.
 
-Il codice decompilato è un tentativo di ricostruire la logica e la struttura del programma originale esaminando il codice assembly (il disassemblato). Tale ricostruzione però è spesso confusionaria e va sistemata per rendere il codice più comprensibile (Codice~\ref{lst:ghidra_decompiled}).
+Il codice decompilato è un tentativo di ricostruire la logica e la struttura del programma originale esaminando il codice assembly (il disassemblato). Tale ricostruzione però è spesso confusionaria e va sistemata per rendere il codice più comprensibile (Codice~\ref{lst:ghidra_decompiled}).\footnote{Il sorgente completo del programma è riportato, per riproducibilità, nel Codice~\ref{lst:app_vuln_source} (Appendice~\ref{app:source}).}
 \begin{lstlisting}[
     language=C,
     numbers=none,
