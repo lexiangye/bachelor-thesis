@@ -199,9 +199,9 @@ Esaminiamo le componenti di \texttt{va\_list} \cite{psabi2025}:
 \begin{itemize}
     \item \texttt{reg\_save\_area}: puntatore all'inizio della register save area.
 
-    \item \texttt{gp\_offset}: contiene l'offset in byte, a partire da \texttt{reg\_save\_area}, del punto in cui è salvato il successivo registro general-purpose disponibile. Nel caso in cui tutti i registri di argomento siano esauriti, viene impostato al valore 48 ($6 \times 8$).
-
-    \item \texttt{fp\_offset}: contiene l'offset in byte, a partire da \texttt{reg\_save\_area}, del punto in cui è salvato il successivo registro vettoriale disponibile. Nel caso in cui tutti i registri di argomento siano esauriti, viene impostato al valore 176 ($6 \times 8 + 8 \times 16$).
+    \item \texttt{gp\_offset}: contiene l'offset in byte, a partire da \texttt{reg\_save\_area}, del punto in cui è salvato il successivo registro general-purpose disponibile. Quando i registri disponibili sono esauriti, il suo valore resta fisso a 48 ($6 \times 8$).
+    
+    \item \texttt{fp\_offset}: stessa logica di \texttt{gp\_offset}, applicata però ai registri vettoriali; il valore a cui si ferma una volta esauriti i registri è invece 176 ($6 \times 8 + 8 \times 16$).
 
     \item \texttt{overflow\_arg\_area}: puntatore nello stack che punta al primo argomento passato lì (se esiste) e avanza a ogni lettura successiva. È dove \texttt{va\_arg} finisce per leggere una volta che \texttt{gp\_offset} o \texttt{fp\_offset} hanno raggiunto il loro valore massimo.
 \end{itemize}
