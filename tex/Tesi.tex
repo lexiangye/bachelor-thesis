@@ -1,6 +1,6 @@
 \documentclass{theme/uniprthesis}
 
-%%%%%%%%%%%Some Extra Packages%%%%%%%%%%%
+%%%%%%%%%%% Extra Packages %%%%%%%%%%%
 \usepackage[italian]{babel}		% To have Italian names in Sections, Figures, Chapters etc.
 \usepackage[T1]{fontenc}
 
@@ -11,32 +11,18 @@
 \usetikzlibrary{positioning, arrows.meta}
 \usepackage{upquote}			% For straight quotes in code snippets
 
+
 \usepackage{blindtext} 			% Dummy Text - remove
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 %%%%% THESIS / TITLE PAGE INFORMATION
-% Everybody needs to complete the following:
-
 \title{Vulnerabilità format string: teoria, sfruttamento e mitigazioni}
 \author{Lexiang Ye}
 \advisor{Prof. Roberto Alfieri}
 \college{Dipartimento di Scienze Matematiche, Fisiche e Informatiche}
 \degree{Corso di Laurea Triennale in Informatica}
 \degreeyears{2025--2026}
-
-
-% Not mandatory fields
-%\newcommand{\subTitle}{Titolo in Inglese} %Subtitle, usually the english version of the title
-
-%\newcommand{\advisorSecond}{Prof. Nome2 Cognome2} % For multiple (up to 4) advisors -- if this is not present then also the remaining ones are automatically omitted
-%\newcommand{\advisorThird}{Dott. Nome3 Cognome3} % For multiple (up to 4) advisors -- if this is not present then also the remaining ones are automatically omitted
-%\newcommand{\advisorFourth}{Dott. Nome4 Cognome4} % For multiple (up to 4) advisors
-
-%\newcommand{\coadvisor}{Prof. co-Nome co-Cognome} %For multiple (up to 4) coadvisors -- if this is not present then also the remaining ones are automatically omitted
-%\newcommand{\coadvisorSecond}{Prof. co-Nome2 co-Cognome2} % For multiple (up to 4) coadvisors -- if this is not present then also the remaining ones are automatically omitted
-%\newcommand{\coadvisorThird}{Dott. co-Nome3 co-Cognome3} % For multiple (up to 4) coadvisors -- if this is not present then also the remaining ones are automatically omitted
-%\newcommand{\coadvisorFourth}{Dott. co-Nome4 co-Cognome4} % For multiple (up to 4) coadvisors
 
 
 \begin{document}
@@ -58,10 +44,6 @@
 \pagenumbering{roman}
 \tableofcontents
 %
-% \listoffigures    %Commentare se non vi sono Immagini
-% \listofalgorithms %Commentare se non vi sono Algoritmi
-% \listoftables     %Commentare se non vi sono Tabelle
-%
 %
 %
 %%%% La prefazione
@@ -72,6 +54,7 @@
 \include{Capitoli/Capitolo01}
 \include{Capitoli/Capitolo02}
 \include{Capitoli/Capitolo03}
+\include{Capitoli/Capitolo04}
 %
 %
 %%%% Le Conclusioni
