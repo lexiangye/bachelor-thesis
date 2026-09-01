@@ -83,7 +83,7 @@ Per far ciò, è necessario conoscere sia l'indirizzo della funzione \texttt{deb
 
 Questi indirizzi però vengono randomizzati a causa di PIE (Codice~\ref{lst:checksec_output}) e ASLR, quest'ultima attiva di default a livello di sistema operativo, che complicano ma non rendono impossibile lo sfruttamento, soprattutto grazie alla presenza del ciclo \texttt{while}, che ci permette di iterare più volte sulla \texttt{printf} vulnerabile.
 
-È infatti possibile calcolare l'indirizzo di \texttt{debug\_shell} a partire dal leak di un indirizzo dell'eseguibile e calcolare l'indirizzo dove è salvato il return address di \texttt{log\_message} a partire dal leak di un indirizzo dello stack. In una successiva iterazione (della stessa esecuzione) è poi possibile sovrascrivere tale return address con l'indirizzo di \texttt{debug\_shell} appena calcolato.\footnote{In realtà, il binario dichiara il supporto per \texttt{SHSTK} (Codice~\ref{lst:checksec_output}), una protezione pensata proprio contro questo tipo di dirottamento del return address. La sua attivazione a runtime, però, richiede anche il supporto della glibc in uso, presente solo a partire dalla versione 2.39 \cite{glibc2024}, successiva alla 2.35 dell'ambiente di riferimento (Tabella~\ref{tab:ambiente_riferimento}). Risulta perciò dichiarata ma non attiva.}
+È infatti possibile calcolare l'indirizzo di \texttt{debug\_shell} a partire dal leak di un indirizzo dell'eseguibile e calcolare l'indirizzo dove è salvato il return address di \texttt{log\_message} a partire dal leak di un indirizzo dello stack. In una successiva iterazione (della stessa esecuzione) è poi possibile sovrascrivere tale return address con l'indirizzo di \texttt{debug\_shell} appena calcolato.\footnote{In realtà, il binario dichiara il supporto per \texttt{SHSTK} (Codice~\ref{lst:checksec_output}), una protezione pensata proprio contro questo tipo di dirottamento del return address. La sua attivazione a runtime, però, richiede anche il supporto della glibc in uso, presente solo a partire dalla versione 2.39~\cite{glibc2024}, successiva alla 2.35 dell'ambiente di riferimento (Tabella~\ref{tab:ambiente_riferimento}). Risulta perciò dichiarata ma non attiva.}
 
 
 \section{Fase di leak: individuazione degli indirizzi utili}\label{sec:leak_phase}
@@ -161,7 +161,7 @@ Vengono allocati \texttt{0x10} byte (16 in decimale) per le variabili locali, e 
     \label{fig:stack_log_message}
 \end{figure}
 
-Il return address è quindi la quarta qword a partire dalla cima dello stack, e lo specificatore corrispondente della format string è dunque il nono (cinque registri general-purpose più quattro qword dello stack). Trattandosi di un indirizzo, possiamo usare lo specificatore \texttt{\%p}: a differenza di \texttt{\%x}, \texttt{\%p} non richiede (né ammette) il modificatore \texttt{l}, poiché lo standard lo definisce univocamente per un argomento \texttt{void*}, la cui dimensione coincide già con quella di un puntatore sulla piattaforma corrente \cite{man3printf} (Codice~\ref{lst:leak_return_address}).
+Il return address è quindi la quarta qword a partire dalla cima dello stack, e lo specificatore corrispondente della format string è dunque il nono (cinque registri general-purpose più quattro qword dello stack). Trattandosi di un indirizzo, possiamo usare lo specificatore \texttt{\%p}: a differenza di \texttt{\%x}, \texttt{\%p} non richiede (né ammette) il modificatore \texttt{l}, poiché lo standard lo definisce univocamente per un argomento \texttt{void*}, la cui dimensione coincide già con quella di un puntatore sulla piattaforma corrente~\cite{man3printf} (Codice~\ref{lst:leak_return_address}).
 \begin{lstlisting}[
     language=Python,
     numbers=none,
@@ -405,7 +405,7 @@ Poiché tale valore, in decimale, è enorme, non è possibile scriverlo con un'u
 \end{figure} 
 
 Scrivere \texttt{debug\_shell\_addr} così com'è, però, non basta: la scrittura riesce, ma l'esecuzione successiva termina con un crash (\texttt{SIGSEGV}).
-La causa è l'allineamento dello stack richiesto dalla System V AMD64 ABI: subito prima di ogni chiamata, \texttt{rsp} deve essere un multiplo di 16 byte \cite{psabi2025}.
+La causa è l'allineamento dello stack richiesto dalla System V AMD64 ABI: subito prima di ogni chiamata, \texttt{rsp} deve essere un multiplo di 16 byte~\cite{psabi2025}.
 
 Quando ritorniamo all'indirizzo di \texttt{debug\_shell}, \texttt{rsp} è allineato a 16 byte, però l'istruzione \texttt{push rbp} lo disallinea. La chiamata a \texttt{system@plt} (Codice~\ref{lst:disas_debug_shell}) si ritrova così \texttt{rsp} disallineato di 8 byte e la \texttt{system()} di glibc non lo tollera.
 Questo succede perché il prologo di \texttt{debug\_shell} si aspetta di essere raggiunto tramite un'istruzione \texttt{call}: il salvataggio del return address che essa compie disallinea lo stack di 8 byte, disallineamento poi corretto dal successivo salvataggio di \texttt{rbp}

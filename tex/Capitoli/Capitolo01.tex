@@ -4,10 +4,10 @@ In questo capitolo vengono affrontate le conoscenze tecniche che supportano la c
 
 \section{Funzioni variadiche in C e specificatori di formato di printf}\label{sec:funcvar_format}
 \begin{defn}[Funzione variadica]\label{def:funzione-variadica}
-Nel linguaggio C, una \textbf{funzione variadica} è una funzione progettata per accettare un numero variabile di argomenti, potenzialmente di tipi diversi \cite{kr1988}.
+Nel linguaggio C, una \textbf{funzione variadica} è una funzione progettata per accettare un numero variabile di argomenti, potenzialmente di tipi diversi~\cite{kr1988}.
 \end{defn}
 
-Una delle funzioni variadiche più note è \texttt{printf}, dichiarata nell'\emph{header} \texttt{<stdio.h>} della libreria standard del linguaggio C \cite{man3printf}, come mostrato nel Codice~\ref{lst:printf_decl}.
+Una delle funzioni variadiche più note è \texttt{printf}, dichiarata nell'\emph{header} \texttt{<stdio.h>} della libreria standard del linguaggio C~\cite{man3printf}, come mostrato nel Codice~\ref{lst:printf_decl}.
 \begin{lstlisting}[
     language=C,
     numbers=none,
@@ -26,9 +26,9 @@ Per le funzioni variadiche, il numero e il tipo degli argomenti che seguono l'ul
     \item terminare la lista degli argomenti aggiuntivi con un valore speciale (sentinella).
 \end{itemize}
 
-L'altro aspetto rilevante delle funzioni variadiche è che gli argomenti catturati dall'ellissi non corrispondono ad alcun parametro nominato: non è quindi possibile accedervi per nome, come si farebbe con un parametro ordinario, ma serve un meccanismo diverso \cite{kr1988}.
+L'altro aspetto rilevante delle funzioni variadiche è che gli argomenti catturati dall'ellissi non corrispondono ad alcun parametro nominato: non è quindi possibile accedervi per nome, come si farebbe con un parametro ordinario, ma serve un meccanismo diverso~\cite{kr1988}.
 
-Per inquadrare il funzionamento della format string e il modo in cui le funzioni variadiche scorrono la lista degli argomenti aggiuntivi, guardiamo \texttt{minprintf} (Codice~\ref{lst:minprintf}), una versione molto semplificata di \texttt{printf} \cite{kr1988}.
+Per inquadrare il funzionamento della format string e il modo in cui le funzioni variadiche scorrono la lista degli argomenti aggiuntivi, guardiamo \texttt{minprintf} (Codice~\ref{lst:minprintf}), una versione molto semplificata di \texttt{printf}~\cite{kr1988}.
 \begin{lstlisting}[
     language=C,
     gobble=4,
@@ -63,15 +63,15 @@ Per inquadrare il funzionamento della format string e il modo in cui le funzioni
 Per gestire gli argomenti aggiuntivi, il linguaggio C ci fornisce l'header standard \texttt{<stdarg.h>}, contenente un insieme di definizioni di macro che stabiliscono come avanzare all'interno di una lista di argomenti.
 Il tipo \texttt{va\_list} viene utilizzato per dichiarare una variabile che fa riferimento, uno dopo l'altro, a ciascuno degli argomenti aggiuntivi anonimi; in \texttt{minprintf}, questa variabile è chiamata \texttt{ap}, che sta per ``argument pointer''. La macro \texttt{va\_start} inizializza \texttt{ap} facendolo puntare al primo argomento senza nome. Questa macro deve essere invocata una volta prima di poter utilizzare \texttt{ap}. È necessaria la presenza di almeno un argomento con nome; l'ultimo di questi argomenti viene utilizzato da \texttt{va\_start} come punto di partenza.
 
-Ogni chiamata a \texttt{va\_arg} restituisce un argomento e fa avanzare \texttt{ap} a quello successivo; \texttt{va\_arg} utilizza il nome del tipo per determinare quale tipo di dato restituire e l'entità del passo da compiere per avanzare. Infine, \texttt{va\_end} si occupa di eseguire le eventuali operazioni di pulizia necessarie. Deve essere chiamata prima che la funzione termini \cite{kr1988}.
+Ogni chiamata a \texttt{va\_arg} restituisce un argomento e fa avanzare \texttt{ap} a quello successivo; \texttt{va\_arg} utilizza il nome del tipo per determinare quale tipo di dato restituire e l'entità del passo da compiere per avanzare. Infine, \texttt{va\_end} si occupa di eseguire le eventuali operazioni di pulizia necessarie. Deve essere chiamata prima che la funzione termini~\cite{kr1988}.
 
 \begin{defn}[Specificatore di formato]\label{def:specificatore}
-    Uno \textbf{specificatore di formato} è una sottosequenza della format string, introdotta dal carattere \%, che stabilisce se e come un argomento aggiuntivo debba essere interpretato e restituito nell'output prodotto \cite{cplusplusprintf}.
+    Uno \textbf{specificatore di formato} è una sottosequenza della format string, introdotta dal carattere \%, che stabilisce se e come un argomento aggiuntivo debba essere interpretato e restituito nell'output prodotto~\cite{cplusplusprintf}.
 \end{defn}
 
-La funzione \texttt{minprintf} stampa sullo standard output (\texttt{stdout}) la stringa indicata da \texttt{fmt}. Qualora quest'ultima contenga degli specificatori di formato, gli argomenti successivi vengono opportunamente formattati e sostituiti al loro posto prima della stampa \cite{cplusplusprintf}. Tale meccanismo ricalca il tipico comportamento delle format string.
+La funzione \texttt{minprintf} stampa sullo standard output (\texttt{stdout}) la stringa indicata da \texttt{fmt}. Qualora quest'ultima contenga degli specificatori di formato, gli argomenti successivi vengono opportunamente formattati e sostituiti al loro posto prima della stampa~\cite{cplusplusprintf}. Tale meccanismo ricalca il tipico comportamento delle format string.
 
-Il principio di \texttt{printf} della libreria standard è identico; l'aspetto che cambia principalmente è la ricchezza dello specificatore di formato, che infatti ha la seguente struttura (Codice~\ref{lst:format_specifier_syntax}) \cite{man3printf,cplusplusprintf}:
+Il principio di \texttt{printf} della libreria standard è identico; l'aspetto che cambia principalmente è la ricchezza dello specificatore di formato, che infatti ha la seguente struttura (Codice~\ref{lst:format_specifier_syntax})~\cite{man3printf,cplusplusprintf}:
 \begin{lstlisting}[
     language={},
     numbers=none,
@@ -83,7 +83,7 @@ Il principio di \texttt{printf} della libreria standard è identico; l'aspetto c
 \end{lstlisting}
 Per il nostro scopo sono rilevanti:
 \begin{itemize}
-    \item \emph{posizione} (\texttt{n\$}), permette di indicare esplicitamente quale argomento della lista debba essere formattato, anziché consumare implicitamente il successivo non ancora utilizzato (ad es. \texttt{\%3\$x} formatta come esadecimale il terzo argomento dopo \texttt{fmt}). Non fa parte dello standard C, ma è un'estensione POSIX; la sua disponibilità dipende quindi dalla libreria C effettivamente linkata, non dal linguaggio in sé. Se si adotta questo stile, la specifica richiede inoltre che ogni posizione fino alla più alta usata compaia almeno una volta nella format string, senza ``buchi'' \cite{man3printf}.
+    \item \emph{posizione} (\texttt{n\$}), permette di indicare esplicitamente quale argomento della lista debba essere formattato, anziché consumare implicitamente il successivo non ancora utilizzato (ad es. \texttt{\%3\$x} formatta come esadecimale il terzo argomento dopo \texttt{fmt}). Non fa parte dello standard C, ma è un'estensione POSIX; la sua disponibilità dipende quindi dalla libreria C effettivamente linkata, non dal linguaggio in sé. Se si adotta questo stile, la specifica richiede inoltre che ogni posizione fino alla più alta usata compaia almeno una volta nella format string, senza ``buchi''~\cite{man3printf}.
     \item \emph{larghezza}, il numero minimo di caratteri da stampare. Se il valore da stampare è più corto di questo numero, il risultato viene riempito con spazi vuoti. Il valore non viene troncato, nemmeno se risulta più lungo.
     \item \emph{lunghezza}, modifica la dimensione del tipo di dato. Noi useremo:
         \begin{itemize}
@@ -106,7 +106,7 @@ Analizziamo la vulnerabilità format string in particolare per l'architettura x8
 
 \subsection{System V AMD64 ABI: registri per il passaggio dei parametri}\label{subsec:sysv_registri}
 \begin{defn}[ABI]\label{def:abi}
-Un'\textbf{ABI} (\emph{Application Binary Interface}) definisce in che modo i diversi componenti di un codice binario possano interfacciarsi su un determinato sistema operativo e una determinata architettura \cite{silberschatz2019}.
+Un'\textbf{ABI} (\emph{Application Binary Interface}) definisce in che modo i diversi componenti di un codice binario possano interfacciarsi su un determinato sistema operativo e una determinata architettura~\cite{silberschatz2019}.
 \end{defn}
 
 Tra i molti dettagli di basso livello specificati da un'ABI, quello che riguarda più da vicino la vulnerabilità trattata in questa tesi è la \emph{calling convention}, ovvero l'insieme di regole con cui il chiamante dispone gli argomenti di una funzione affinché il chiamato possa recuperarli correttamente. Per la piattaforma di riferimento (Linux, x86-64), queste regole sono specificate dalla System V AMD64 ABI, che decide la collocazione di ciascun argomento --- in un registro o sullo stack --- sulla base di una classificazione.
@@ -114,10 +114,10 @@ Tra i molti dettagli di basso livello specificati da un'ABI, quello che riguarda
 Gli argomenti delle funzioni vengono suddivisi in diverse categorie, mappate sulle specifiche famiglie di registri dell'architettura AMD64. Quelli rilevanti ai fini della trattazione della nostra vulnerabilità appartengono alla classe \emph{INTEGER}, costituita dai tipi interi che possono essere contenuti all'interno di uno dei registri \emph{general-purpose} (registri di uso generale).
 
 I tipi base (con segno e senza segno) appartenenti alla classe INTEGER sono: \texttt{\_Bool}, \texttt{char}, \texttt{short}, \texttt{int}, \texttt{long}, \texttt{long long} e puntatori.
-La dimensione di ciascun argomento viene arrotondata per eccesso a 8 byte. Di conseguenza, lo stack risulta sempre allineato a 8 byte \cite{psabi2025}.
+La dimensione di ciascun argomento viene arrotondata per eccesso a 8 byte. Di conseguenza, lo stack risulta sempre allineato a 8 byte~\cite{psabi2025}.
 
 Per gli argomenti di classe INTEGER, il passaggio avviene assegnandoli da sinistra verso destra al primo registro disponibile nella sequenza: \texttt{\%rdi}, \texttt{\%rsi}, \texttt{\%rdx}, \texttt{\%rcx}, \texttt{\%r8}, \texttt{\%r9} (Tabella~\ref{tab:registri_integer}).
-Completata questa assegnazione ai registri, gli argomenti rimanenti (destinati alla memoria) vengono inseriti nello stack in ordine inverso, ovvero da destra verso sinistra \cite{psabi2025}.
+Completata questa assegnazione ai registri, gli argomenti rimanenti (destinati alla memoria) vengono inseriti nello stack in ordine inverso, ovvero da destra verso sinistra~\cite{psabi2025}.
 
 \begin{table}[ht]
     \centering
@@ -151,7 +151,7 @@ La soluzione è quella di mettere, nel prologo delle funzioni variadiche, del co
 
 \begin{defn}[Register Save Area]\label{def:reg_save_area}
     La \textbf{register save area} è un'area di memoria a dimensione fissa (176 byte), allocata nello \emph{stack frame} di una funzione variadica che invoca \texttt{va\_start}.
-    Ogni registro usato per il passaggio dei parametri vi occupa un offset fisso (Tabella~\ref{tab:register_save_area}), così che \texttt{va\_arg} possa accedere agli argomenti arrivati nei registri con la stessa aritmetica dei puntatori usata per quelli sullo stack \cite{psabi2025}.
+    Ogni registro usato per il passaggio dei parametri vi occupa un offset fisso (Tabella~\ref{tab:register_save_area}), così che \texttt{va\_arg} possa accedere agli argomenti arrivati nei registri con la stessa aritmetica dei puntatori usata per quelli sullo stack~\cite{psabi2025}.
 \end{defn}
 
 \begin{table}[ht]
@@ -176,10 +176,10 @@ La soluzione è quella di mettere, nel prologo delle funzioni variadiche, del co
 
 Devono essere salvati solo i registri che potrebbero essere utilizzati per passare gli argomenti. 
 Una funzione variadica chiamata non sa quanti registri general-purpose verranno popolati.
-\footnote{Un problema analogo riguarda i registri vettoriali \texttt{\%xmm0}--\texttt{\%xmm7}, usati per gli argomenti \emph{floating-point}. La System V AMD64 ABI, però, risolve il caso diversamente: prima di ogni chiamata potenzialmente variadica, il chiamante imposta \texttt{\%al} (il byte basso di \texttt{\%rax}) a un valore fra 0 e 8, che il prologo usa come limite superiore --- non necessariamente esatto --- al numero di registri vettoriali da salvare, evitando così di inizializzare inutilmente l'unità XMM \cite{psabi2025}.}
-Di conseguenza, per non perdere potenziali dati validi, il prologo è obbligato a salvare sempre tutti e sei i registri general-purpose destinati al passaggio dei parametri all'interno della register save area sullo stack \cite{psabi2025}.
+\footnote{Un problema analogo riguarda i registri vettoriali \texttt{\%xmm0}--\texttt{\%xmm7}, usati per gli argomenti \emph{floating-point}. La System V AMD64 ABI, però, risolve il caso diversamente: prima di ogni chiamata potenzialmente variadica, il chiamante imposta \texttt{\%al} (il byte basso di \texttt{\%rax}) a un valore fra 0 e 8, che il prologo usa come limite superiore --- non necessariamente esatto --- al numero di registri vettoriali da salvare, evitando così di inizializzare inutilmente l'unità XMM~\cite{psabi2025}.}
+Di conseguenza, per non perdere potenziali dati validi, il prologo è obbligato a salvare sempre tutti e sei i registri general-purpose destinati al passaggio dei parametri all'interno della register save area sullo stack~\cite{psabi2025}.
 
-Il tipo \texttt{va\_list} (Codice~\ref{lst:va_list}) è un array di un solo elemento di tipo \texttt{struct}, contenente le informazioni necessarie per permettere alla macro \texttt{va\_arg} di estrarre l'argomento successivo correttamente \cite{psabi2025}. È compito della macro \texttt{va\_start} inizializzare questa \texttt{struct}.
+Il tipo \texttt{va\_list} (Codice~\ref{lst:va_list}) è un array di un solo elemento di tipo \texttt{struct}, contenente le informazioni necessarie per permettere alla macro \texttt{va\_arg} di estrarre l'argomento successivo correttamente~\cite{psabi2025}. È compito della macro \texttt{va\_start} inizializzare questa \texttt{struct}.
 \begin{lstlisting}[
     language=C,
     numbers=none,
@@ -195,7 +195,7 @@ Il tipo \texttt{va\_list} (Codice~\ref{lst:va_list}) è un array di un solo elem
     } va_list[1];
 \end{lstlisting}
 
-Esaminiamo le componenti di \texttt{va\_list} \cite{psabi2025}:
+Esaminiamo le componenti di \texttt{va\_list}~\cite{psabi2025}:
 \begin{itemize}
     \item \texttt{reg\_save\_area}: puntatore all'inizio della register save area.
 
@@ -213,7 +213,7 @@ Una volta accertata l'idoneità, viene verificata la disponibilità dei registri
     \item se \emph{disponibili}, l'argomento viene estratto dai relativi registri in base agli offset correnti.
     \item se \emph{esauriti}, l'argomento viene estratto dallo stack, in base agli offset correnti.
 \end{itemize}
-Alla fine di ogni chiamata, vengono aggiornati i relativi offset presenti in \texttt{va\_list} in base ai registri utilizzati o allo spazio consumato nello stack \cite{psabi2025}.
+Alla fine di ogni chiamata, vengono aggiornati i relativi offset presenti in \texttt{va\_list} in base ai registri utilizzati o allo spazio consumato nello stack~\cite{psabi2025}.
 
 Analizziamo ora come questi meccanismi si applichino al caso specifico \texttt{printf}. La funzione variadica \texttt{printf} possiede la format string come unico parametro fisso. Tale argomento occupa quindi il primo registro general-purpose disponibile, ovvero \texttt{\%rdi}. Gli eventuali argomenti aggiuntivi occupano i successivi registri o lo stack, in base al loro tipo e numero.
 
@@ -252,9 +252,9 @@ Questi strumenti ci servono per analizzare il binario vulnerabile e crearci uno 
     \item \texttt{file}, per vedere il formato del file binario e la sua architettura;
     \item \texttt{pwn checksec}, per controllare le impostazioni di sicurezza del binario;
     \item \texttt{objdump}, per il disassemblaggio e l'ispezione a basso livello del binario;
-    \item \texttt{Ghidra}, \emph{Software Reverse Engineering} (SRE) Framework per analizzare codice compilato (include funzionalità di disassemblaggio e decompilazione) \cite{ghidra};
+    \item \texttt{Ghidra}, \emph{Software Reverse Engineering} (SRE) Framework per analizzare codice compilato (include funzionalità di disassemblaggio e decompilazione)~\cite{ghidra};
     \item \texttt{pwndbg}, plugin per \texttt{GDB} per il debugging del binario;
-    \item \texttt{pwntools}, libreria di sviluppo per gli exploit scritta in Python, per creare quello che andrà a sfruttare il binario vulnerabile \cite{pwntools}.
+    \item \texttt{pwntools}, libreria di sviluppo per gli exploit scritta in Python, per creare quello che andrà a sfruttare il binario vulnerabile~\cite{pwntools}.
 \end{itemize}
 
 Con l'ambiente e gli strumenti appena descritti, disponiamo ora anche dei mezzi pratici per osservare, su un binario reale, i meccanismi discussi nelle sezioni precedenti: è da qui che parte il Capitolo~\ref{chapter:fmt_vuln}.
