@@ -1,2 +1,14 @@
 \chapter{Mitigazioni}\label{chapter:mitigations}
 Le protezioni dedicate alla vulnerabilità format string intervengono su due livelli distinti e complementari: uno a runtime (interno alla libreria del linguaggio C) e uno sul codice sorgente. Il primo non dipende dalla correttezza del codice sorgente e agisce anche quando il pattern vulnerabile è ancora presente; il secondo punta invece a prevenire tale pattern nel sorgente che produce il binario.
+
+
+\section{Fortificazione a runtime: i controlli di \_FORTIFY\_SOURCE}\label{sec:fortify_source}
+La protezione a runtime è data da \texttt{\_FORTIFY\_SOURCE}, una funzionalità presente nella GNU C Library (\texttt{glibc}) che protegge il programma da diversi tipologie di vulnerabilità --- tra cui la vulnerabilità format string.
+
+\texttt{\_FORTIFY\_SOURCE} fornisce delle versioni più sicure delle funzioni vulnerabili e durante la compilazione le sostituiscono. La \texttt{printf} viene infatti rimpiazzata dalla funzione \texttt{\_\_printf\_chk}, che individua certi tipi di pattern caratteristici di un attacco andando poi a terminare il programma per evitare possibili danni.
+
+Questa protezione è stata introdotta nel 2004 con la \texttt{glibc} 2.3.4 e quindi è una funzionlità presente all'interno del nostro ambiente di riferimento (Tabella~\ref{tab:ambiente_riferimento}), che usa la versione 2.3.5.
+
+Per avere un programma che possiede questa protezione è necessario compilarlo con l'opzione \texttt{-D\_FORTIFY\_SOURCE=2} che attiva tale funzionalità. Nel nostro ambiente è già attiva di default. Inoltre, è necessario che il programma venga compilato con un livello di ottimizzazione \texttt{-O1} o superiore.
+
+\texttt{\_\_printf\_chk} blocca sia l'utilizzo errato dello accesso agli argomenti tramite lo specificatore posizionale sia l'utilizzo di \texttt{\%n} in memoria scrivibile.
