@@ -193,7 +193,7 @@ Restano da conoscere due soli valori per poter calcolare l'indirizzo di \texttt{
     0000000000001207 <main>:
         ; ...
         123a:	call   11e3 <log_message>
-        123f:	mov    rdx,QWORD PTR [rip+0x2dca]        # 4010 <stdin@GLIBC_2.2.5>
+        123f:	mov    rdx,QWORD PTR [rip+0x2dca]
 
     ; ...
 \end{lstlisting}
@@ -517,4 +517,4 @@ Abbiamo dunque ottenuto veramente una shell: l'exploit può dirsi concluso con s
 
 Nessuna delle protezioni di sicurezza attive di default sul binario nell'ambiente di riferimento (Codice~\ref{lst:checksec_output}, Tabella~\ref{tab:ambiente_riferimento})  impedisce di causare leak di informazioni e di eseguire scritture in memoria.
 
-Fermare questa vulnerabilità richiede protezioni pensate apposta contro la format string, non le protezioni generiche appena discusse. Il Capitolo~4 le presenta e ne verifica l'efficacia proprio sullo stesso exploit sviluppato in questo capitolo.
+Fermare questa vulnerabilità richiede protezioni pensate apposta contro la format string. Il Capitolo~\ref{chapter:mitigations} le presenta e ne verifica l'efficacia.
