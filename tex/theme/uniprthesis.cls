@@ -74,7 +74,7 @@
 	keepspaces=true,                 % keeps spaces in text, useful for keeping indentation of code (possibly needs columns=flexible)
 	keywordstyle=\color{mygreen},       % keyword style
 	language=C++,                    % the language of the code
-	otherkeywords={*,...},           % if you want to add more keywords to the set
+	otherkeywords={},                % if you want to add more keywords to the set
 	numbers=left,                    % where to put the line-numbers; possible values are (none, left, right)
 	numbersep=5pt,                   % how far the line-numbers are from the code
 	numberstyle=\tiny\color{black}, % the style that is used for the line-numbers
