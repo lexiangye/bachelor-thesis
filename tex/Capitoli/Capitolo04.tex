@@ -1,26 +1,24 @@
 \chapter{Mitigazioni}\label{chapter:mitigations}
-Le protezioni dedicate alla vulnerabilità format string intervengono su due livelli distinti e complementari: uno a runtime (interno alla libreria del linguaggio C) e uno sul codice sorgente. Il primo non dipende dalla correttezza del codice sorgente e agisce anche quando il pattern vulnerabile è ancora presente; il secondo punta invece a prevenire tale pattern nel sorgente che produce il binario.
+Le protezioni dedicate alla vulnerabilità format string intervengono su due livelli distinti e complementari: uno a runtime (interno alla libreria del linguaggio C) e uno sul codice sorgente. Il primo non dipende dalla correttezza del codice sorgente e agisce anche quando il pattern vulnerabile è ancora presente; il secondo punta invece a evitare che tale pattern venga scritto fin dal principio.
 
 
 \section{Fortificazione a runtime: i controlli di \_FORTIFY\_SOURCE}\label{sec:fortify_source}
-La protezione a runtime è data da \texttt{\_FORTIFY\_SOURCE}, una funzionalità presente nella GNU C Library (\texttt{glibc}) che protegge il programma da diversi tipologie di vulnerabilità --- tra cui la vulnerabilità format string.
+La protezione a runtime è data da \texttt{\_FORTIFY\_SOURCE}, una funzionalità presente nella GNU C Library (glibc) che protegge il programma da diverse tipologie di vulnerabilità --- tra cui la vulnerabilità format string~\cite{openssfhardening}.
 
-\texttt{\_FORTIFY\_SOURCE} fornisce delle versioni più sicure delle funzioni vulnerabili e durante la compilazione le sostituiscono. La \texttt{printf} viene infatti rimpiazzata dalla funzione \texttt{\_\_printf\_chk}, che individua certi tipi di pattern caratteristici di un attacco andando poi a terminare il programma per evitare possibili danni.
+Questa protezione è stata introdotta nel 2004 con la glibc 2.3.4 e quindi è una funzionalità presente all'interno del nostro ambiente di riferimento (Tabella~\ref{tab:ambiente_riferimento}), che usa la versione 2.35~\cite{maskrayfortify}.
 
-Questa protezione è stata introdotta nel 2004 con la \texttt{glibc} 2.3.4 e quindi è una funzionlità presente all'interno del nostro ambiente di riferimento (Tabella~\ref{tab:ambiente_riferimento}), che usa la versione 2.3.5.
+\texttt{\_FORTIFY\_SOURCE} fornisce versioni più sicure delle funzioni vulnerabili, con cui le sostituisce in fase di compilazione~\cite{glibcmanual}. La \texttt{printf} viene infatti rimpiazzata dalla funzione \texttt{\_\_printf\_chk}, che individua alcuni pattern d'uso tipici di un attacco e termina il programma per evitare possibili danni.
 
-Per avere un programma che possiede questa protezione è necessario compilarlo con l'opzione \texttt{-D\_FORTIFY\_SOURCE=2} che attiva tale funzionalità. Nel nostro ambiente è già attiva di default. Inoltre, è necessario che il programma venga compilato con un livello di ottimizzazione \texttt{-O1} o superiore.
+In generale, per avere questa protezione è necessario compilare con l'opzione \texttt{-D\_FORTIFY\_SOURCE=2}. Nel nostro ambiente di riferimento, però, questa opzione è già impostata di default dal compilatore: resta comunque necessario che il programma sia compilato con un livello di ottimizzazione \texttt{-O1} o superiore, altrimenti la protezione non viene applicata~\cite{openssfhardening}.
 
-\texttt{\_\_printf\_chk} blocca sia l'utilizzo errato dello accesso agli argomenti tramite lo specificatore posizionale sia l'utilizzo di \texttt{\%n} in memoria scrivibile.
+\texttt{\_\_printf\_chk} blocca sia l'utilizzo errato dell'accesso agli argomenti tramite lo specificatore posizionale sia l'utilizzo di \texttt{\%n} in memoria scrivibile~\cite{captainplanet2010}.
 
 \subsection{Argomenti posizionali: il controllo sui buchi}\label{subsec:pos_control}
-Gli specificatori posizionali \texttt{n\$} sono in realtà consentiti, ma solo se usati nel modo corretto: ogni posizione, fino alla più alta riferita, deve essere coperta all'interno della format string (Sezione~\ref{sec:funcvar_format}).
+Gli specificatori posizionali \texttt{n\$} sono consentiti, ma solo se usati nel modo corretto: ogni posizione, fino alla più alta usata, deve essere coperta all'interno della format string (Sezione~\ref{sec:funcvar_format})~\cite{captainplanet2010}.
+Senza la protezione \texttt{\_FORTIFY\_SOURCE}, come detto in Sezione~\ref{sec:info_disclosure}, viene assunto che ciascuna delle posizioni vuote sia coperta da un argomento dedicato a un registro general-purpose --- o, una volta esauriti i registri, dallo stack --- permettendo così questo uso errato e semplificando il compito dell'attaccante.
+Con \texttt{\_FORTIFY\_SOURCE} attiva invece, la funzione \texttt{\_\_printf\_chk} riesce ad individuare questo utilizzo: il programma viene terminato.
 
-Senza la protezione \texttt{\_FORTIFY\_SOURCE}, come detto in Sezione~\ref{sec:info_disclosure}, viene assunto che ciascuna delle posizioni vuote sia coperto da un argomento dedicato a un registro general-purpose, permettendo così questo uso errato che semplifica molto la vità all'attaccante.
-
-Con \texttt{\_FORTIFY\_SOURCE} attiva invece, la funzione \texttt{\_\_printf\_chk} riesci ad individuare questo utilizzo: il programma viene terminato.
-
-Prendiamo il programma utilizzato per l'information disclosure (Codice~\ref{lst:leak_demo_c}) e questa volta lo compiliamo con il livello di ottimizzazione \texttt{-O1}: \texttt{\_FORTIFY\_SOURCE}, già attivo di default nel nostro ambiente (Tabella~\ref{tab:ambiente_riferimento}), viene in questo modo applicato al binario prodotto. Infatti, \texttt{printf} (Codice~\ref{lst:disas_leak_demo}) viene rimpiazzata dalla \texttt{\_\_printf\_chk} più sicura (Codice~\ref{lst:leak_demo_printfchk}).
+Prendiamo il programma utilizzato per l'information disclosure (Codice~\ref{lst:leak_demo_c}) e questa volta lo compiliamo con il livello di ottimizzazione \texttt{-O1}, che rende \texttt{\_FORTIFY\_SOURCE} finalmente attiva sul binario prodotto. Infatti, \texttt{printf} (Codice~\ref{lst:disas_leak_demo}) viene rimpiazzata dalla \texttt{\_\_printf\_chk} più sicura (Codice~\ref{lst:leak_demo_printfchk}).
 \begin{lstlisting}[
     language={},
     numbers=none,
@@ -35,12 +33,12 @@ Prendiamo il programma utilizzato per l'information disclosure (Codice~\ref{lst:
     ; ...
 \end{lstlisting}
 
-Di conseguenza un uso errato dello specificatore posizionale causa la terminazione (Codice\ref{lst:seventh_wrong}). 
+Di conseguenza, lo stesso specificatore \texttt{\%7\$lx} già usato in Sezione~\ref{sec:info_disclosure} (Codice~\ref{lst:leak_interaction}) causa ora la terminazione del programma (Codice~\ref{lst:seventh_wrong}).
 \begin{lstlisting}[
     language={},
     numbers=none,
     gobble=4,
-    caption={},
+    caption={Terminazione del programma causata dall'accesso posizionale \texttt{\%7\$lx}},
     label={lst:seventh_wrong}
 ]
     %7$lx
@@ -48,17 +46,16 @@ Di conseguenza un uso errato dello specificatore posizionale causa la terminazio
     Aborted (core dumped)
 \end{lstlisting}
 
-È comunque possibile arrivare a tale posizione utilizzando più specificatori che vanno a riempire le posizioni mancanti (Codice~\ref{lst:seventh_correct}).
+È comunque possibile arrivare alla settima posizione utilizzando più specificatori che riempiono le posizioni mancanti 
+(Codice~\ref{lst:seventh_correct}).
 \begin{lstlisting}[
     language={},
     numbers=none,
     gobble=4,
-    caption={},
+    caption={Lettura riuscita della settima posizione tramite specificatori \texttt{\%lx} sequenziali},
     label={lst:seventh_correct}
 ]
     %lx %lx %lx %lx %lx %lx %lx
     7fffa9edd430 55f4bc8f42bc 0 55f4bc8f42a0 20786c2520786c25 20786c2520786c25 20786c2520786c25
 \end{lstlisting}
-Non è presente il valore di \texttt{local\_secret} (\texttt{0x1337}) poiché l'ottimizzazione \texttt{-O1} toglie la variabile dal programma poiché non viene mai utilizzata.
-
-Il concetto fondamentale è che nonostante sia presente la protezione \texttt{\_FORTIFY\_SOURCE} è comunque possibile ottenere del contenuto che non dovrebbe essere visibile.
+Il valore di \texttt{local\_secret} (\texttt{0x1337}) non è più presente: l'ottimizzazione \texttt{-O1} elimina la variabile dal programma perché non viene mai utilizzata. Il concetto fondamentale è che il controllo sui buchi posizionali non blocca l'accesso sequenziale alla stessa posizione, già visto in Sezione~\ref{sec:info_disclosure}: la protezione rende l'attacco più complesso --- un payload più lungo, meno mirato e non sempre praticabile a seconda della posizione da raggiungere --- ma non lo impedisce del tutto.
