@@ -12,3 +12,53 @@ Questa protezione è stata introdotta nel 2004 con la \texttt{glibc} 2.3.4 e qui
 Per avere un programma che possiede questa protezione è necessario compilarlo con l'opzione \texttt{-D\_FORTIFY\_SOURCE=2} che attiva tale funzionalità. Nel nostro ambiente è già attiva di default. Inoltre, è necessario che il programma venga compilato con un livello di ottimizzazione \texttt{-O1} o superiore.
 
 \texttt{\_\_printf\_chk} blocca sia l'utilizzo errato dello accesso agli argomenti tramite lo specificatore posizionale sia l'utilizzo di \texttt{\%n} in memoria scrivibile.
+
+\subsection{Argomenti posizionali: il controllo sui buchi}\label{subsec:pos_control}
+Gli specificatori posizionali \texttt{n\$} sono in realtà consentiti, ma solo se usati nel modo corretto: ogni posizione, fino alla più alta riferita, deve essere coperta all'interno della format string (Sezione~\ref{sec:funcvar_format}).
+
+Senza la protezione \texttt{\_FORTIFY\_SOURCE}, come detto in Sezione~\ref{sec:info_disclosure}, viene assunto che ciascuna delle posizioni vuote sia coperto da un argomento dedicato a un registro general-purpose, permettendo così questo uso errato che semplifica molto la vità all'attaccante.
+
+Con \texttt{\_FORTIFY\_SOURCE} attiva invece, la funzione \texttt{\_\_printf\_chk} riesci ad individuare questo utilizzo: il programma viene terminato.
+
+Prendiamo il programma utilizzato per l'information disclosure (Codice~\ref{lst:leak_demo_c}) e questa volta lo compiliamo con il livello di ottimizzazione \texttt{-O1}: \texttt{\_FORTIFY\_SOURCE}, già attivo di default nel nostro ambiente (Tabella~\ref{tab:ambiente_riferimento}), viene in questo modo applicato al binario prodotto. Infatti, \texttt{printf} (Codice~\ref{lst:disas_leak_demo}) viene rimpiazzata dalla \texttt{\_\_printf\_chk} più sicura (Codice~\ref{lst:leak_demo_printfchk}).
+\begin{lstlisting}[
+    language={},
+    numbers=none,
+    gobble=4,
+    caption={Estratto del disassemblato di \texttt{main}: chiamata a \texttt{\_\_printf\_chk}},
+    label={lst:leak_demo_printfchk}
+]
+    ; ...
+
+    call   __printf_chk@plt
+
+    ; ...
+\end{lstlisting}
+
+Di conseguenza un uso errato dello specificatore posizionale causa la terminazione (Codice\ref{lst:seventh_wrong}). 
+\begin{lstlisting}[
+    language={},
+    numbers=none,
+    gobble=4,
+    caption={},
+    label={lst:seventh_wrong}
+]
+    %7$lx
+    *** invalid %N$ use detected ***
+    Aborted (core dumped)
+\end{lstlisting}
+
+È comunque possibile arrivare a tale posizione utilizzando più specificatori che vanno a riempire le posizioni mancanti (Codice~\ref{lst:seventh_correct}).
+\begin{lstlisting}[
+    language={},
+    numbers=none,
+    gobble=4,
+    caption={},
+    label={lst:seventh_correct}
+]
+    %lx %lx %lx %lx %lx %lx %lx
+    7fffa9edd430 55f4bc8f42bc 0 55f4bc8f42a0 20786c2520786c25 20786c2520786c25 20786c2520786c25
+\end{lstlisting}
+Non è presente il valore di \texttt{local\_secret} (\texttt{0x1337}) poiché l'ottimizzazione \texttt{-O1} toglie la variabile dal programma poiché non viene mai utilizzata.
+
+Il concetto fondamentale è che nonostante sia presente la protezione \texttt{\_FORTIFY\_SOURCE} è comunque possibile ottenere del contenuto che non dovrebbe essere visibile.
