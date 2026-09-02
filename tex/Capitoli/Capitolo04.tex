@@ -59,3 +59,48 @@ Di conseguenza, lo stesso specificatore \texttt{\%7\$lx} già usato in Sezione~\
     7fffa9edd430 55f4bc8f42bc 0 55f4bc8f42a0 20786c2520786c25 20786c2520786c25 20786c2520786c25
 \end{lstlisting}
 Il valore di \texttt{local\_secret} (\texttt{0x1337}) non è più presente: l'ottimizzazione \texttt{-O1} elimina la variabile dal programma perché non viene mai utilizzata. Il concetto fondamentale è che il controllo sui buchi posizionali non blocca l'accesso sequenziale alla stessa posizione, già visto in Sezione~\ref{sec:info_disclosure}: la protezione rende l'attacco più complesso --- un payload più lungo, meno mirato e non sempre praticabile a seconda della posizione da raggiungere --- ma non lo impedisce del tutto.
+
+\subsection{Il controllo su \%n in memoria scrivibile}\label{subsec:write_control}
+Per impedire le scritture arbitrarie in memoria (Sezioni~\ref{sec:mem_write} e~\ref{sec:partial_write}), la protezione \texttt{\_FORTIFY\_SOURCE} esegue un controllo sullo specificatore \texttt{\%n} (e le sue varianti): se lo trova in un'area di memoria scrivibile --- come lo stack nel nostro caso --- il programma viene terminato~\cite{captainplanet2010}. Il controllo dipende unicamente da dove si trova la format string, non da chi l'ha scritta: una \texttt{\%n} inserita come stringa letterale nel codice sorgente, collocata dal compilatore in un'area di sola lettura, non fa scattare il blocco~\cite{jelinek2004}.
+
+% Another difference is that with -D_FORTIFY_SOURCE=2, \%n
+% in format strings of the most common *printf family functions
+% is allowed only if it is stored in read-only memory (usually
+% string literals, gettext's _("\%s string \%n") is fine too), but
+% usually when an attacker attempts to exploit a format string
+% vulnerability, \%n will be somewhere where the attacker could
+% write it into.
+% https://gcc.gnu.org/legacy-ml/gcc-patches/2004-09/msg02055.html
+
+
+% Format strings containing the \%n specifier may not be located at a writeable address in the memory space of the application.
+% https://phrack.org/issues/67/a-eulogy-for-format-strings
+
+
+Proviamo l'efficacia di tale controllo sul binario già fortificato nella Sottosezione~\ref{subsec:pos_control} (Codice~\ref{lst:block_write}).
+\begin{lstlisting}[
+    language={},
+    numbers=none,
+    gobble=4,
+    caption={Terminazione del programma causata dall'uso di \texttt{\%n} (e varianti) in memoria scrivibile},
+    label={lst:block_write}
+]
+    %n
+    *** %n in writable segment detected ***
+    Aborted (core dumped)
+
+    %ln
+    *** %n in writable segment detected ***
+    Aborted (core dumped)
+
+    %hn
+    *** %n in writable segment detected ***
+    Aborted (core dumped)
+
+    %hhn
+    *** %n in writable segment detected ***
+    Aborted (core dumped)
+\end{lstlisting}
+Qualsiasi tipologia di utilizzo dello specificatore di conversione \texttt{n} viene bloccata dai controlli di \texttt{\_FORTIFY\_SOURCE}.
+
+Un limite comune a entrambi i controlli di questa sezione è la possibilità di un attacco denial-of-service: il programma viene comunque terminato ogni volta che l'attaccante usa male lo specificatore posizionale o cerca di scrivere tramite \texttt{\%n}. Questi controlli bloccano però attacchi molto più pericolosi, capaci di portare all'esecuzione di codice arbitrario: per questo restano una protezione fondamentale.
