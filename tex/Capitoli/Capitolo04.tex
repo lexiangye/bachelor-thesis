@@ -13,7 +13,7 @@ In generale, per avere questa protezione è necessario compilare con l'opzione \
 
 \texttt{\_\_printf\_chk} blocca sia l'utilizzo errato dell'accesso agli argomenti tramite lo specificatore posizionale sia l'utilizzo di \texttt{\%n} in memoria scrivibile~\cite{captainplanet2010}.
 
-\subsection{Argomenti posizionali: il controllo sui buchi}\label{subsec:pos_control}
+\subsection{Specificatori posizionali: il controllo sui buchi}\label{subsec:pos_control}
 Gli specificatori posizionali \texttt{n\$} sono consentiti, ma solo se usati nel modo corretto: ogni posizione, fino alla più alta usata, deve essere coperta all'interno della format string (Sezione~\ref{sec:funcvar_format})~\cite{captainplanet2010}.
 Senza la protezione \texttt{\_FORTIFY\_SOURCE}, come detto in Sezione~\ref{sec:info_disclosure}, viene assunto che ciascuna delle posizioni vuote sia coperta da un argomento dedicato a un registro general-purpose --- o, una volta esauriti i registri, dallo stack --- permettendo così questo uso errato e semplificando il compito dell'attaccante.
 Con \texttt{\_FORTIFY\_SOURCE} attiva invece, la funzione \texttt{\_\_printf\_chk} riesce ad individuare questo utilizzo: il programma viene terminato.
@@ -61,46 +61,20 @@ Di conseguenza, lo stesso specificatore \texttt{\%7\$lx} già usato in Sezione~\
 Il valore di \texttt{local\_secret} (\texttt{0x1337}) non è più presente: l'ottimizzazione \texttt{-O1} elimina la variabile dal programma perché non viene mai utilizzata. Il concetto fondamentale è che il controllo sui buchi posizionali non blocca l'accesso sequenziale alla stessa posizione, già visto in Sezione~\ref{sec:info_disclosure}: la protezione rende l'attacco più complesso --- un payload più lungo, meno mirato e non sempre praticabile a seconda della posizione da raggiungere --- ma non lo impedisce del tutto.
 
 \subsection{Il controllo su \%n in memoria scrivibile}\label{subsec:write_control}
-Per impedire le scritture arbitrarie in memoria (Sezioni~\ref{sec:mem_write} e~\ref{sec:partial_write}), la protezione \texttt{\_FORTIFY\_SOURCE} esegue un controllo sullo specificatore \texttt{\%n} (e le sue varianti): se lo trova in un'area di memoria scrivibile --- come lo stack nel nostro caso --- il programma viene terminato~\cite{captainplanet2010}. Il controllo dipende unicamente da dove si trova la format string, non da chi l'ha scritta: una \texttt{\%n} inserita come stringa letterale nel codice sorgente, collocata dal compilatore in un'area di sola lettura, non fa scattare il blocco~\cite{jelinek2004}.
+Per impedire le scritture arbitrarie in memoria (Sezioni~\ref{sec:mem_write} e~\ref{sec:partial_write}), la protezione \texttt{\_FORTIFY\_SOURCE} esegue un controllo sullo specificatore \texttt{\%n} (e le sue varianti): se lo trova in un'area di memoria scrivibile --- come lo stack nel nostro caso --- il programma viene terminato~\cite{captainplanet2010}. Il controllo dipende unicamente da dove si trova la format string, non da chi l'ha scritta: un \texttt{\%n} che compare in una stringa letterale nel codice sorgente, collocato dal compilatore in un'area di sola lettura, non fa scattare il blocco. Non si tratta però di una falla sfruttabile in pratica: i dati forniti da un attaccante arrivano al programma solo a runtime, e si trovano di norma in un'area di memoria scrivibile~\cite{jelinek2004}.
 
-% Another difference is that with -D_FORTIFY_SOURCE=2, \%n
-% in format strings of the most common *printf family functions
-% is allowed only if it is stored in read-only memory (usually
-% string literals, gettext's _("\%s string \%n") is fine too), but
-% usually when an attacker attempts to exploit a format string
-% vulnerability, \%n will be somewhere where the attacker could
-% write it into.
-% https://gcc.gnu.org/legacy-ml/gcc-patches/2004-09/msg02055.html
-
-
-% Format strings containing the \%n specifier may not be located at a writeable address in the memory space of the application.
-% https://phrack.org/issues/67/a-eulogy-for-format-strings
-
-
-Proviamo l'efficacia di tale controllo sul binario già fortificato nella Sottosezione~\ref{subsec:pos_control} (Codice~\ref{lst:block_write}).
+Proviamo l'efficacia di tale controllo sul binario già fortificato nella Sottosezione~\ref{subsec:pos_control} (Codice~\ref{lst:write_block}).
 \begin{lstlisting}[
     language={},
     numbers=none,
     gobble=4,
-    caption={Terminazione del programma causata dall'uso di \texttt{\%n} (e varianti) in memoria scrivibile},
-    label={lst:block_write}
+    caption={Terminazione del programma causata dall'uso di \texttt{\%n} in memoria scrivibile},
+    label={lst:write_block}
 ]
     %n
     *** %n in writable segment detected ***
     Aborted (core dumped)
-
-    %ln
-    *** %n in writable segment detected ***
-    Aborted (core dumped)
-
-    %hn
-    *** %n in writable segment detected ***
-    Aborted (core dumped)
-
-    %hhn
-    *** %n in writable segment detected ***
-    Aborted (core dumped)
 \end{lstlisting}
-Qualsiasi tipologia di utilizzo dello specificatore di conversione \texttt{n} viene bloccata dai controlli di \texttt{\_FORTIFY\_SOURCE}.
+Lo stesso vale per le varianti con modificatore di lunghezza (\texttt{\%ln}, \texttt{\%hn}, \texttt{\%hhn}): il controllo dipende solo dalla posizione della format string, come appena visto, non da quale specificatore vi compare.
 
-Un limite comune a entrambi i controlli di questa sezione è la possibilità di un attacco denial-of-service: il programma viene comunque terminato ogni volta che l'attaccante usa male lo specificatore posizionale o cerca di scrivere tramite \texttt{\%n}. Questi controlli bloccano però attacchi molto più pericolosi, capaci di portare all'esecuzione di codice arbitrario: per questo restano una protezione fondamentale.
+Un limite comune a entrambi i controlli di questa sezione è la possibilità di un attacco \emph{denial-of-service}: il programma viene comunque terminato ogni volta che l'attaccante utilizza in modo errato lo specificatore posizionale o cerca di scrivere tramite \texttt{\%n}. Questi controlli bloccano però attacchi molto più pericolosi, capaci di portare all'esecuzione di codice arbitrario: per questo restano una protezione fondamentale.
