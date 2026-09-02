@@ -6,9 +6,9 @@ In questo capitolo è presentato in che modo la vulnerabilità format string vie
 La funzione \texttt{printf} può essere utilizzata in diversi modi, alcuni corretti e sicuri, ed altri errati e vulnerabili.
 Questo aspetto si basa principalmente su chi ha il controllo della format string: il programmatore oppure l'utilizzatore del programma.
 
-\subsection{Il pattern sicuro: format string come costante}\label{subsec:right_fmt}
+\subsection{Il pattern sicuro: format string letterale}\label{subsec:right_fmt}
 Un uso corretto prevede che, all'interno della format string, ogni specificatore di formato corrisponda a un argomento effettivamente passato alla funzione e che i rispettivi tipi di dato siano tra loro compatibili.
-Per rispettare questa regola, la format string deve essere scritta staticamente nel codice sorgente dal programmatore, in modo che sia sotto il suo esclusivo controllo (Codice~\ref{lst:right_fmt}).
+Per rispettare questa regola, la format string deve essere un \emph{letterale}: scritta staticamente nel codice sorgente dal programmatore, in modo che sia sotto il suo esclusivo controllo (Codice~\ref{lst:right_fmt}).
 \begin{lstlisting}[
     language=C,
     gobble=4,
@@ -58,7 +58,7 @@ Di conseguenza, un attaccante può rompere facilmente la regola secondo cui ogni
 Come detto nella Sezione~\ref{sec:callconv}, se uno specificatore non corrisponde a nessun argomento passato alla \texttt{printf}, esso va ad agire su dati residui presenti sui registri o sullo stack, in base ai valori correnti degli offset di \texttt{va\_list}.
 Questo permette all'attaccante di causare leak di informazioni o addirittura di eseguire scritture in memoria.
 
-Nell'ambiente di riferimento (Tabella~\ref{tab:ambiente_riferimento}), una \texttt{printf} come quella appena mostrata (Codice~\ref{lst:wrong_fmt}) --- con format string non costante e senza altri argomenti --- fa scattare di default l'avviso \texttt{-Wformat-security}. Basta però un solo argomento in più, anche innocuo, affinché l'avviso scompaia: la format string resta comunque vulnerabile~\cite{gccwopts}.
+Nell'ambiente di riferimento (Tabella~\ref{tab:ambiente_riferimento}), una \texttt{printf} come quella appena mostrata (Codice~\ref{lst:wrong_fmt}) --- con format string non letterale e senza altri argomenti --- fa scattare di default l'avviso \texttt{-Wformat-security}. Basta però un solo argomento in più, anche innocuo, affinché l'avviso scompaia: la format string resta comunque vulnerabile~\cite{gccwopts}.
 
 
 \section{Information disclosure: individuare e leggere un valore con \%x}\label{sec:info_disclosure}
