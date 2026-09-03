@@ -78,3 +78,51 @@ Proviamo l'efficacia di tale controllo sul binario già fortificato nella Sottos
 Lo stesso vale per le varianti con modificatore di lunghezza (\texttt{\%ln}, \texttt{\%hn}, \texttt{\%hhn}): il controllo dipende solo dalla posizione della format string, come appena visto, non da quale specificatore vi compare.
 
 Un limite comune a entrambi i controlli di questa sezione è la possibilità di un attacco \emph{denial-of-service}: il programma viene comunque terminato ogni volta che l'attaccante utilizza in modo errato lo specificatore posizionale o cerca di scrivere tramite \texttt{\%n}. Questi controlli bloccano però attacchi molto più pericolosi, capaci di portare all'esecuzione di codice arbitrario: per questo restano una protezione fondamentale.
+
+
+\section{Verifica sperimentale: l'exploit del Capitolo 3 contro un binario fortificato}\label{sec:fortify_verify}
+A questo punto, prendiamo lo stesso binario trattato nel Capitolo~\ref{chapter:exploit}, ma questa volta con la protezione \texttt{\_FORTIFY\_SOURCE} attiva e andiamo a vedere la sua efficacia contro l'exploit (Codice~\ref{lst:full_exploit}).
+
+Aggiungiamo \texttt{context.log\_level = \textquotesingle{}debug\textquotesingle} in una riga dello script, durante l'impostazione del contesto di \texttt{pwntools}, per poter osservare la comunicazione con il binario.
+
+\begin{lstlisting}[
+    language=Python,
+    gobble=4,
+    caption={},
+    label={lst:log_level}
+]
+    from pwn import *
+
+    exe = ELF('./vuln_service')
+    context.binary = exe
+    context.log_level = 'debug'
+    io = exe.process()
+
+    # ...
+\end{lstlisting}
+
+Facendo partire l'exploit Python così com'è, otteniamo l'output in Codice~\ref{lst:payload1_block}.
+\begin{lstlisting}[
+    language={},
+    numbers=none,
+    gobble=4,
+    caption={Terminazione del programma causata dall'invio di \texttt{payload1} (Codice~\ref{lst:full_exploit})},
+    label={lst:payload1_block}
+]
+    [DEBUG] Received 0x15 bytes:
+        b'=== MiniLog v1.0 ===\n'
+    [DEBUG] Sent 0x5 bytes:
+        b'%9$p\n'
+    [DEBUG] Received 0x21 bytes:
+        b'*** invalid %N$ use detected ***\n'
+\end{lstlisting}
+\texttt{\_FORTIFY\_SOURCE} termina il programma già alla ricezione del primo payload dell'exploit. Tale payload andrà a costituire la format string e \texttt{\%9\$p} rappresenta un utilizzo errato dello specificatore posizionale poiché le posizioni dal primo all'ottavo non sono coperte. Questo causa la terminazione del programma con cui lo script stava interagendo (Sottosezione~\ref{subsec:pos_control}).
+
+Come visto in Codice~\ref{lst:seventh_correct} è possibile aggirare il blocco causato dallo specificatore posizionale, usandolo correttamente, ovvero andando a coprire tutti i buchi.
+I due leak che vengono eseguiti nell'exploit, si possono quindi causare anche se la posizione da raggiungere sarà diversa dal programma senza la protezione \texttt{\_FORTIFY\_SOURCE}.
+Ciò che invece verrà sempre bloccato, è il dirottamento dell'esecuzione alla funzione \texttt{debug\_shell}. Questo accade perché \texttt{buf} contenente la format string è sempre allocato sullo stack, ovvero in memoria scrivibile. Quindi indipendentemente dal tipo di specificatore \texttt{\%n} viene fatta, verrà sempre bloccata dai controlli di \texttt{\_FORTIFY\_SOURCE} (Sezione~\ref{subsec:write_control}).
+
+La protezione \texttt{\_FORTIFY\_SOURCE} riesce quindi a bloccare tutti i tentativi di scrittura in memoria, privando dell'attaccante in uno strumento fondamentale, però il leak può essere comunque causato, anche se più difficilmente. Questo è il motivo per cui la soluzione migliore contro la vulnerabilità format string è cercare di evitarlo fin dal principio. Ciò viene trattato nella Sezione~\ref{sec:prevention}.
+
+
+\section{Buone pratiche di prevenzione}\label{sec:prevention}
