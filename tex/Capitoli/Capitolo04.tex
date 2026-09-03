@@ -9,13 +9,13 @@ Questa protezione è stata introdotta nel 2004 con la glibc 2.3.4 e quindi è un
 
 \texttt{\_FORTIFY\_SOURCE} fornisce versioni più sicure delle funzioni vulnerabili, con cui le sostituisce in fase di compilazione~\cite{glibcmanual}. La \texttt{printf} viene infatti rimpiazzata dalla funzione \texttt{\_\_printf\_chk}, che individua alcuni pattern d'uso tipici di un attacco e termina il programma per evitare possibili danni.
 
-In generale, per avere questa protezione è necessario compilare con l'opzione \texttt{-D\_FORTIFY\_SOURCE=2}. Nel nostro ambiente di riferimento, però, questa opzione è già impostata di default dal compilatore: resta comunque necessario che il programma sia compilato con un livello di ottimizzazione \texttt{-O1} o superiore, altrimenti la protezione non viene applicata~\cite{openssfhardening}.
+In generale, per avere questa protezione è necessario compilare con l'opzione \texttt{-D\_FORTIFY\_SOURCE=2}. Nel nostro ambiente di riferimento, però, questa opzione è già impostata di default dal compilatore. Resta comunque necessario che il programma sia compilato con un livello di ottimizzazione \texttt{-O1} o superiore, altrimenti la protezione non viene applicata~\cite{openssfhardening}.
 
 \texttt{\_\_printf\_chk} blocca sia l'utilizzo errato dell'accesso agli argomenti tramite lo specificatore posizionale sia l'utilizzo di \texttt{\%n} in memoria scrivibile~\cite{captainplanet2010}.
 
 \subsection{Specificatori posizionali: il controllo sui buchi}\label{subsec:pos_control}
 Gli specificatori posizionali \texttt{n\$} sono consentiti, ma solo se usati nel modo corretto: ogni posizione, fino alla più alta usata, deve essere coperta all'interno della format string (Sezione~\ref{sec:funcvar_format})~\cite{captainplanet2010}.
-Senza la protezione \texttt{\_FORTIFY\_SOURCE}, come detto in Sezione~\ref{sec:info_disclosure}, viene assunto che ciascuna delle posizioni vuote sia coperta da un argomento dedicato a un registro general-purpose --- o, una volta esauriti i registri, dallo stack --- permettendo così questo uso errato e semplificando il compito dell'attaccante.
+Senza la protezione \texttt{\_FORTIFY\_SOURCE}, ogni buco viene comunque coperto da un ``argomento fantasma'' (Sezione~\ref{sec:callconv}): un registro general-purpose o, una volta esauriti i registri, una posizione dello stack. Questa copertura silenziosa permette l'uso errato dello specificatore posizionale, semplificando il compito dell'attaccante.
 Con \texttt{\_FORTIFY\_SOURCE} attiva invece, la funzione \texttt{\_\_printf\_chk} riesce ad individuare questo utilizzo: il programma viene terminato.
 
 Prendiamo il programma utilizzato per l'information disclosure (Codice~\ref{lst:leak_demo_c}) e questa volta lo compiliamo con il livello di ottimizzazione \texttt{-O1}, che rende \texttt{\_FORTIFY\_SOURCE} finalmente attiva sul binario prodotto. Infatti, \texttt{printf} (Codice~\ref{lst:disas_leak_demo}) viene rimpiazzata dalla \texttt{\_\_printf\_chk} più sicura (Codice~\ref{lst:leak_demo_printfchk}).
@@ -77,7 +77,7 @@ Proviamo l'efficacia di tale controllo sul binario già fortificato nella Sottos
 \end{lstlisting}
 Lo stesso vale per le varianti con modificatore di lunghezza (\texttt{\%ln}, \texttt{\%hn}, \texttt{\%hhn}): il controllo dipende solo dalla posizione della format string, come appena visto, non da quale specificatore vi compare.
 
-Un limite comune a entrambi i controlli di questa sezione è la possibilità di un attacco \emph{denial-of-service}: il programma viene comunque terminato ogni volta che l'attaccante utilizza in modo errato lo specificatore posizionale o cerca di scrivere tramite \texttt{\%n}. Questi controlli bloccano però attacchi molto più pericolosi, capaci di portare all'esecuzione di codice arbitrario: per questo restano una protezione fondamentale.
+Un limite comune a entrambi i controlli di questa sezione è la possibilità di un attacco \emph{denial-of-service}: il programma viene comunque terminato ogni volta che l'attaccante utilizza in modo errato lo specificatore posizionale o cerca di scrivere tramite \texttt{\%n}. Questi controlli bloccano però attacchi molto più pericolosi, capaci di portare all'esecuzione di codice arbitrario. Per questo restano una protezione fondamentale.
 
 
 \section{Verifica sperimentale: l'exploit del Capitolo 3 contro un binario fortificato}\label{sec:fortify_verify}

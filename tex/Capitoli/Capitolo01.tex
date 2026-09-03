@@ -26,7 +26,7 @@ Per le funzioni variadiche, il numero e il tipo degli argomenti che seguono l'ul
     \item terminare la lista degli argomenti aggiuntivi con un valore speciale (sentinella).
 \end{itemize}
 
-L'altro aspetto rilevante delle funzioni variadiche è che gli argomenti catturati dall'ellissi non corrispondono ad alcun parametro nominato: non è quindi possibile accedervi per nome, come si farebbe con un parametro ordinario, ma serve un meccanismo diverso~\cite{kr1988}.
+L'altro aspetto rilevante delle funzioni variadiche è che gli argomenti catturati dall'ellissi non corrispondono ad alcun parametro nominato: non è possibile accedervi per nome, come si farebbe con un parametro ordinario, ma serve un meccanismo diverso~\cite{kr1988}.
 
 Per inquadrare il funzionamento della format string e il modo in cui le funzioni variadiche scorrono la lista degli argomenti aggiuntivi, guardiamo \texttt{minprintf} (Codice~\ref{lst:minprintf}), una versione molto semplificata di \texttt{printf}~\cite{kr1988}.
 \begin{lstlisting}[

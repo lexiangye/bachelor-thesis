@@ -1,7 +1,7 @@
 \chapter{Sviluppo pratico di un exploit}\label{chapter:exploit}
 Finora abbiamo sempre avuto il codice sorgente a disposizione. Nel mondo reale però, molti servizi con cui è possibile interagire non mettono a disposizione né il codice sorgente né il file binario compilato. L'attaccante si trova quindi in uno scenario di tipo \emph{black-box}: non sa come sia scritto il programma, può solo fornirgli input e studiarne l'output o il comportamento.
 
-Se però l'attaccante entra in possesso anche solo del binario, è possibile, tramite gli strumenti elencati nella Sottosezione~\ref{subsec:tools}, ottenere informazioni rilevanti tra cui: architettura, formato del file, impostazioni di sicurezza, disassemblato e decompilato (pseudocodice simile al linguaggio originale).
+Se però l'attaccante entra in possesso anche solo del binario, è possibile, tramite gli strumenti elencati nella Sottosezione~\ref{subsec:tools}, ottenere informazioni rilevanti tra cui architettura, formato del file, impostazioni di sicurezza, disassemblato e decompilato (pseudocodice simile al linguaggio originale).
 
 Tali informazioni rendono possibile ricostruire la logica del programma e individuarne le vulnerabilità: è esattamente ciò che tratta questo capitolo, insieme alla scrittura dello script Python che le sfrutta, applicando le tecniche del Capitolo~\ref{chapter:fmt_vuln}.
 
@@ -219,7 +219,7 @@ Il calcolo dell'indirizzo di \texttt{debug\_shell} è mostrato nel Codice~\ref{l
 \subsection{Leak dello stack: la posizione del return address}\label{subsec:stack_leak}
 Lo stack --- anch'esso randomizzato da ASLR --- viene caricato in una posizione differente dall'eseguibile, quindi il leak ricavato nella Sottosezione~\ref{subsec:bin_leak} non è utile. La sua struttura interna, però, resta identica a ogni esecuzione ed è ricavabile dal disassemblato del programma: come per l'indirizzo di \texttt{debug\_shell}, basta quindi il leak di un singolo indirizzo dello stack per risalire, tramite questa struttura nota, alla posizione del return address di \texttt{log\_message}.
 
-Alla funzione \texttt{log\_message} viene passato un puntatore a \texttt{buf}, la variabile locale dichiarata in \texttt{main}: l'obiettivo del leak è proprio questo puntatore, che corrisponde a un indirizzo dello stack poiché \texttt{buf} è una variabile locale. Il disassemblato di \texttt{log\_message} (Codice~\ref{lst:disas_log_message}), nel tratto omesso subito dopo l'allocazione dello spazio per le variabili locali, salva questo puntatore con \texttt{mov QWORD PTR [rbp-0x8],rdi}: il puntatore occupa quindi la seconda delle due qword precedentemente lasciate vuote in Figura~\ref{fig:stack_log_message}, a partire da \texttt{rsp}.
+Alla funzione \texttt{log\_message} viene passato un puntatore a \texttt{buf}, la variabile locale dichiarata in \texttt{main}: l'obiettivo del leak è proprio questo puntatore, che corrisponde a un indirizzo dello stack poiché \texttt{buf} è una variabile locale. Il disassemblato di \texttt{log\_message} (Codice~\ref{lst:disas_log_message}), nel tratto omesso subito dopo l'allocazione dello spazio per le variabili locali, salva questo puntatore con \texttt{mov QWORD PTR [rbp-0x8],rdi}: il puntatore occupa la seconda delle due qword precedentemente lasciate vuote in Figura~\ref{fig:stack_log_message}, a partire da \texttt{rsp}.
 
 Per calcolare la posizione del return address di \texttt{log\_message}, resta da conoscere la posizione di \texttt{buf} rispetto a tale return address. Questa si ricava dal disassemblato di \texttt{main} (Codice~\ref{lst:disas_main}).
 \begin{lstlisting}[
@@ -408,7 +408,7 @@ Scrivere \texttt{debug\_shell\_addr} così com'è, però, non basta: la scrittur
 La causa è l'allineamento dello stack richiesto dalla System V AMD64 ABI: subito prima di ogni chiamata, \texttt{rsp} deve essere un multiplo di 16 byte~\cite{psabi2025}.
 
 Quando ritorniamo all'indirizzo di \texttt{debug\_shell}, \texttt{rsp} è allineato a 16 byte, però l'istruzione \texttt{push rbp} lo disallinea. La chiamata a \texttt{system@plt} (Codice~\ref{lst:disas_debug_shell}) si ritrova così \texttt{rsp} disallineato di 8 byte e la \texttt{system()} di glibc non lo tollera.
-Questo succede perché il prologo di \texttt{debug\_shell} si aspetta di essere raggiunto tramite un'istruzione \texttt{call}: il salvataggio del return address che essa compie disallinea lo stack di 8 byte, disallineamento poi corretto dal successivo salvataggio di \texttt{rbp}
+Questo succede perché il prologo di \texttt{debug\_shell} si aspetta di essere raggiunto tramite un'istruzione \texttt{call}: il salvataggio del return address che essa compie disallinea lo stack di 8 byte, disallineamento poi corretto dal successivo salvataggio di \texttt{rbp}.
 \begin{lstlisting}[
     language={},
     numbers=none,
@@ -427,9 +427,9 @@ Questo succede perché il prologo di \texttt{debug\_shell} si aspetta di essere 
     ; ...
 \end{lstlisting}
 
-La correzione è saltare i primi 5 byte di \texttt{debug\_shell}, cioè \texttt{endbr64} e \texttt{push rbp} (causa del disallineamento): il valore da scrivere diventa quindi \texttt{debug\_shell\_addr + 5}. In questo modo nel momento della chiamata a \texttt{system()}, \texttt{rsp} è allineato a 16 byte, evitando così il \texttt{SIGSEGV}.
+La correzione è saltare i primi 5 byte di \texttt{debug\_shell}, cioè \texttt{endbr64} e \texttt{push rbp} (causa del disallineamento): il valore da scrivere diventa \texttt{debug\_shell\_addr + 5}. In questo modo nel momento della chiamata a \texttt{system()}, \texttt{rsp} è allineato a 16 byte, evitando così il \texttt{SIGSEGV}.
 
-\texttt{debug\_shell\_addr + 5}, offset \texttt{0x11ce}, cade comunque nella stessa pagina di \texttt{0x11c9} e \texttt{0x123f}: il ragionamento visto sopra per la scrittura da 2 byte resta perciò valido senza modifiche: cambia solo il valore effettivamente scritto.
+\texttt{debug\_shell\_addr + 5}, offset \texttt{0x11ce}, cade comunque nella stessa pagina di \texttt{0x11c9} e \texttt{0x123f}. Il ragionamento visto sopra per la scrittura da 2 byte resta perciò valido senza modifiche: cambia solo il valore effettivamente scritto.
 
 \texttt{buf} è la quinta qword a partire da \texttt{rsp} (Figura~\ref{fig:stack_ret_addr}) e corrisponde perciò al decimo specificatore della format string (cinque registri general-purpose più cinque qword dello stack). Il Codice~\ref{lst:write_payload} costruisce e invia il payload finale.
 \begin{lstlisting}[
@@ -455,7 +455,7 @@ Il payload è costituito da:
     \item \texttt{f\textquotesingle\%\{low16\}x\textquotesingle}: stampa \texttt{low16} caratteri, impostando così il contatore di \texttt{printf} al valore da scrivere (i 16 bit bassi di \texttt{debug\_shell\_addr + 5});
     \item \texttt{b\textquotesingle\%12\$hn\textquotesingle}: scrive i 2 byte bassi del contatore all'indirizzo presente nel dodicesimo argomento fantasma. La posizione 12 non è casuale ed è la stessa a ogni esecuzione nonostante \texttt{low16} cambi: la lunghezza di \texttt{spec} varia fra 11 e 13 byte a seconda delle sue cifre (da due a cinque), ma il padding la riporta sempre a 16 byte, cioè due qword esatte. \texttt{spec} e il padding occupano dunque le prime due qword di \texttt{buf} (posizioni 10 e 11), e l'indirizzo finisce sempre in posizione 12;
     \item \texttt{pad}: numero dei byte di padding, calcolato a runtime in base alla lunghezza di \texttt{spec}, per allineare l'indirizzo che segue a 8 byte;
-    \item \texttt{p64(ret\_pos\_addr)}: indirizzo impacchettato in \emph{little endian} su 64 bit, inserito per ultimo per lo stesso motivo della Sezione~\ref{sec:mem_write}: contenendo byte nulli, troncherebbe la lettura di \texttt{printf} se comparisse prima.
+    \item \texttt{p64(ret\_pos\_addr)}: indirizzo impacchettato in \emph{little endian} su 64 bit. Viene inserito per ultimo per lo stesso motivo della Sezione~\ref{sec:mem_write}: contenendo byte nulli, troncherebbe la lettura di \texttt{printf} se comparisse prima.
 \end{itemize}
 
 Una volta inviato il payload, la \texttt{printf} di \texttt{log\_message} termina normalmente, eseguendo la scrittura. Una volta arrivato all'istruzione \texttt{ret} però, l'esecuzione riprende da \texttt{debug\_shell} invece che da \texttt{main}, e si apre una shell. Resta da verificare che la shell così ottenuta sia davvero utilizzabile.

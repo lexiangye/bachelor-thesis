@@ -58,7 +58,7 @@ Di conseguenza, un attaccante può rompere facilmente la regola secondo cui ogni
 Come detto nella Sezione~\ref{sec:callconv}, se uno specificatore non corrisponde a nessun argomento passato alla \texttt{printf}, esso va ad agire su dati residui presenti sui registri o sullo stack, in base ai valori correnti degli offset di \texttt{va\_list}.
 Questo permette all'attaccante di causare leak di informazioni o addirittura di eseguire scritture in memoria.
 
-Nell'ambiente di riferimento (Tabella~\ref{tab:ambiente_riferimento}), una \texttt{printf} come quella appena mostrata (Codice~\ref{lst:wrong_fmt}) --- con format string non letterale e senza altri argomenti --- fa scattare di default l'avviso \texttt{-Wformat-security}. Basta però un solo argomento in più, anche innocuo, affinché l'avviso scompaia: la format string resta comunque vulnerabile~\cite{gccwopts}.
+Nell'ambiente di riferimento (Tabella~\ref{tab:ambiente_riferimento}), una \texttt{printf} come quella appena mostrata (Codice~\ref{lst:wrong_fmt}) --- con format string non letterale e senza altri argomenti --- fa scattare di default l'avviso \texttt{-Wformat-security}. Basta però un solo argomento in più, anche innocuo, affinché l'avviso scompaia. La format string resta comunque vulnerabile~\cite{gccwopts}.
 
 
 \section{Information disclosure: individuare e leggere un valore con \%x}\label{sec:info_disclosure}
@@ -224,7 +224,7 @@ Riprendiamo il Codice~\ref{lst:wrong_fmt} e questa volta inseriamo una variabile
     }
 \end{lstlisting}
 
-Lo specificatore \texttt{\%n}, come gli altri, fa riferimento a un argomento --- realmente passato o fantasma --- che viene considerato come l'indirizzo di scrittura; il valore scritto corrisponde al numero di caratteri stampati dalla \texttt{printf} prima di incontrare lo specificatore in questione (Sezione~\ref{sec:funcvar_format}). Quando quell'argomento è fantasma, sia l'indirizzo sia il valore scritto sfuggono al controllo del programmatore: \texttt{\%n} diventa così una primitiva di scrittura arbitraria, a patto di riuscire a piazzare l'indirizzo voluto nell'argomento fantasma giusto.
+Lo specificatore \texttt{\%n}, come gli altri, fa riferimento a un argomento --- realmente passato o fantasma --- che viene considerato come l'indirizzo di scrittura; il valore scritto corrisponde al numero di caratteri stampati dalla \texttt{printf} prima di incontrare lo specificatore in questione (Sezione~\ref{sec:funcvar_format}). Quando quell'argomento è fantasma, sia l'indirizzo sia il valore scritto sfuggono al controllo del programmatore: \texttt{\%n} diventa una primitiva di scrittura arbitraria, a patto di riuscire a piazzare l'indirizzo voluto nell'argomento fantasma giusto.
 
 Di conseguenza, è necessario conoscere l'indirizzo di \texttt{global\_secret} e inserirlo in \texttt{buf} in modo che sia allineato a 8 byte affinché \texttt{\%n} vi possa fare riferimento in modo corretto. Inoltre occorre sapere la posizione di \texttt{buf} per conoscere l'indice posizionale da assegnare allo specificatore.
 
