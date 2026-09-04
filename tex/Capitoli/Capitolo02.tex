@@ -8,7 +8,7 @@ Questo aspetto si basa principalmente su chi ha il controllo della format string
 
 \subsection{Il pattern sicuro: format string letterale}\label{subsec:right_fmt}
 Un uso corretto prevede che, all'interno della format string, ogni specificatore di formato corrisponda a un argomento effettivamente passato alla funzione e che i rispettivi tipi di dato siano tra loro compatibili.
-Per rispettare questa regola, la format string deve essere un \emph{letterale}: scritta staticamente nel codice sorgente dal programmatore, in modo che sia sotto il suo esclusivo controllo (Codice~\ref{lst:right_fmt}).
+Per rispettare questa regola, la format string deve essere un \emph{letterale}: scritta staticamente nel codice sorgente dal programmatore, in modo che sia sotto il suo esclusivo controllo (Codice~\ref{lst:right_fmt})~\cite{seicertc2016}.
 \begin{lstlisting}[
     language=C,
     gobble=4,
@@ -30,10 +30,10 @@ Per rispettare questa regola, la format string deve essere un \emph{letterale}: 
     }
 \end{lstlisting}
 
-Tuttavia, il fatto che sia scritta staticamente non evita che possano esserci \emph{undefined behavior} o un \emph{leak} di informazioni. Il programmatore ha la responsabilità di controllare il numero e il tipo degli specificatori rispetto agli argomenti.
+Tuttavia, il fatto che sia scritta staticamente non evita che possano esserci \emph{undefined behavior} o un \emph{leak} di informazioni. Il programmatore ha la responsabilità di controllare il numero e il tipo degli specificatori rispetto agli argomenti~\cite{seicertc2016}.
 
 \subsection{Il pattern vulnerabile: format string controllata dall'utente}\label{subsec:wrong_fmt}
-Un uso errato e vulnerabile consiste nell'avere la format string sotto il completo controllo dell'utente (Codice~\ref{lst:wrong_fmt}).
+Un uso errato e vulnerabile consiste nell'avere la format string sotto il completo controllo dell'utente (Codice~\ref{lst:wrong_fmt})~\cite{seicertc2016}.
 Di conseguenza, un attaccante può rompere facilmente la regola secondo cui ogni specificatore deve corrispondere ad un argomento effettivamente passato alla \texttt{printf}.
 \begin{lstlisting}[
     language=C,
@@ -228,7 +228,7 @@ Lo specificatore \texttt{\%n}, come gli altri, fa riferimento a un argomento ---
 
 Di conseguenza, è necessario conoscere l'indirizzo di \texttt{global\_secret} e inserirlo in \texttt{buf} in modo che sia allineato a 8 byte affinché \texttt{\%n} vi possa fare riferimento in modo corretto. Inoltre occorre sapere la posizione di \texttt{buf} per conoscere l'indice posizionale da assegnare allo specificatore.
 
-Nell'ambiente di riferimento (Tabella~\ref{tab:ambiente_riferimento}) il sorgente viene compilato di default con la protezione PIE (\emph{Position Independent Executable}), che rende possibile che il file binario venga caricato in indirizzi di memoria differenti a ogni esecuzione. Pertanto anche l'indirizzo di \texttt{global\_secret}, essendo una variabile globale, cambia a ogni esecuzione.
+Nell'ambiente di riferimento (Tabella~\ref{tab:ambiente_riferimento}) il sorgente viene compilato di default con la protezione PIE (\emph{Position Independent Executable})~\cite{openssfhardening}, che rende possibile che il file binario venga caricato in indirizzi di memoria differenti a ogni esecuzione. Pertanto anche l'indirizzo di \texttt{global\_secret}, essendo una variabile globale, cambia a ogni esecuzione.
 Per mostrare in modo diretto la scrittura di \texttt{global\_secret}, conviene lavorare con un indirizzo noto in anticipo. Quindi per semplicità, in questo esempio viene disabilitata la protezione PIE.
 \footnote{Per disabilitare la protezione PIE, è necessario compilare il sorgente con le opzioni \texttt{-fno-pie} e \texttt{-no-pie}.}
 Senza tale protezione, l'indirizzo di \texttt{global\_secret} è fisso ed è possibile individuarlo esaminando il disassemblato (Codice~\ref{lst:disas_global_secret}).
