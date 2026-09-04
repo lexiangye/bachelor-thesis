@@ -11,10 +11,12 @@
 \usetikzlibrary{positioning, arrows.meta}
 \usepackage{upquote}			% For straight quotes in code snippets
 
-
-\usepackage{blindtext} 			% Dummy Text - remove
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+%%%%% url possono andare a capo quando ci sono i trattini
+\makeatletter
+\g@addto@macro{\UrlBreaks}{\do\-}
+\makeatother
 
 %%%%% THESIS / TITLE PAGE INFORMATION
 \title{Vulnerabilità format string: teoria, sfruttamento e mitigazioni}
