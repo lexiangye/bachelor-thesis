@@ -6,3 +6,5 @@ a.out
 leak_demo
 write_demo
 vuln_service
+leak_demo_fortified
+vuln_service_fortified
