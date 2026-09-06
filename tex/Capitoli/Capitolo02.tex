@@ -30,7 +30,7 @@ Per rispettare questa regola, la format string deve essere un \emph{letterale}: 
     }
 \end{lstlisting}
 
-Tuttavia, il fatto che sia scritta staticamente non evita che possano esserci \emph{undefined behavior} o un \emph{leak} di informazioni. Il programmatore ha la responsabilità di controllare il numero e il tipo degli specificatori rispetto agli argomenti~\cite{seicertc2016}.
+Tuttavia, il fatto che sia scritta staticamente non evita che possano esserci \emph{undefined behavior} o un \emph{leak} di informazioni. Il programmatore ha la responsabilità di controllare il numero e il tipo degli specificatori rispetto agli argomenti~\cite{seicertc2016}, anche se un supporto automatico esiste: l'opzione del compilatore \texttt{-Wformat} --- attiva di default nel nostro ambiente di riferimento (Tabella~\ref{tab:ambiente_riferimento}) --- segnala uno specificatore privo di un argomento corrispondente, o con un tipo incompatibile con quanto atteso~\cite{gccwopts}.
 
 \subsection{Il pattern vulnerabile: format string controllata dall'utente}\label{subsec:wrong_fmt}
 Un uso errato e vulnerabile consiste nell'avere la format string sotto il completo controllo dell'utente (Codice~\ref{lst:wrong_fmt})~\cite{seicertc2016}.
