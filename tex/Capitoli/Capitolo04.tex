@@ -108,8 +108,8 @@ La protezione \texttt{\_FORTIFY\_SOURCE} riesce quindi a bloccare tutti i tentat
 
 \section{Prevenzione in fase di compilazione: i controlli statici sulla format string}\label{sec:prevention}
 La soluzione più efficace contro questa classe di vulnerabilità resta alla radice: il pattern sicuro già visto in Sottosezione~\ref{subsec:right_fmt}, una format string letterale. Il linguaggio C, però, non impone questo utilizzo, quindi serve un modo per accorgersi di una format string vulnerabile prima ancora che il programma venga eseguito.
-
-Come già visto in Sottosezione~\ref{subsec:wrong_fmt}, GCC individua il pattern vulnerabile tramite l'opzione \texttt{-Wformat-security}, attiva di default nel nostro ambiente di riferimento. Lo vediamo sullo stesso \texttt{printf(buf)} del Codice~\ref{lst:leak_demo_c} (Codice~\ref{lst:fmt_security}).
+ 
+Come già visto in Sottosezione~\ref{subsec:wrong_fmt}, una format string non letterale fa scattare di default l'avviso \texttt{-Wformat-security}: un controllo che GCC applica solo se \texttt{-Wformat} (Sottosezione~\ref{subsec:right_fmt}) è attiva~\cite{gccwopts}, come lo è di default nel nostro ambiente di riferimento. Lo vediamo sullo stesso \texttt{printf(buf)} del Codice~\ref{lst:leak_demo_c} (Codice~\ref{lst:fmt_security}).
 \begin{lstlisting}[
     language={},
     numbers=none,
@@ -122,9 +122,9 @@ Come già visto in Sottosezione~\ref{subsec:wrong_fmt}, GCC individua il pattern
           |            ^~~
 \end{lstlisting}
 
-Basta però un solo argomento in più, anche innocuo --- come già notato in quella stessa sottosezione --- perché l'avviso sparisca, pur restando la format string vulnerabile: ad esempio sostituendo \texttt{printf(buf, 0)} a \texttt{printf(buf)}.
+Però, basta un solo argomento in più, anche innocuo, perché l'avviso sparisca, pur restando la format string vulnerabile (Sottosezione~\ref{subsec:wrong_fmt}): ad esempio sostituendo \texttt{printf(buf, 0)} a \texttt{printf(buf)}.
 
-Una soluzione più efficace è l'opzione del compilatore \texttt{-Wformat-nonliteral}: più stringente, segnala qualunque format string non letterale indipendentemente dal numero di argomenti, chiudendo così il caso appena visto~\cite{gccwopts}. \texttt{printf(buf, 0)}, che riesce ad aggirare \texttt{-Wformat-security}, viene infatti individuata da \texttt{-Wformat-nonliteral} (Codice~\ref{lst:fmt_nonliteral}).
+Una soluzione più efficace è l'opzione \texttt{-Wformat-nonliteral}: più stringente, segnala qualunque format string non letterale indipendentemente dal numero di argomenti, chiudendo così il caso appena visto~\cite{gccwopts}. \texttt{printf(buf, 0)}, che riesce ad aggirare \texttt{-Wformat-security}, viene infatti individuata da \texttt{-Wformat-nonliteral} (Codice~\ref{lst:fmt_nonliteral}).
 \begin{lstlisting}[
     language={},
     numbers=none,
@@ -137,6 +137,8 @@ Una soluzione più efficace è l'opzione del compilatore \texttt{-Wformat-nonlit
           |            ^~~
 \end{lstlisting}
 
-C'è però un limite intrinseco di \texttt{-Wformat-nonliteral}, che non riguarda \texttt{log\_message} ma vale la pena conoscere: l'opzione non si applica a una funzione che riceve i propri argomenti tramite \texttt{va\_list} (Sottosezione~\ref{subsec:funvar_cc}), come \texttt{vprintf} o un \emph{wrapper} di logging che inoltra la format string ricevuta. È una scelta deliberata di GCC, per non generare falsi allarmi su un pattern altrimenti legittimo~\cite{gccwopts}.
+\texttt{-Wformat-nonliteral} ha però un limite intrinseco che vale la pena conoscere, anche se non riguarda \texttt{log\_message} (Sezione~\ref{sec:vuln_service}): l'opzione non si applica a una funzione che riceve i propri argomenti tramite \texttt{va\_list} (Sottosezione~\ref{subsec:funvar_cc}), come \texttt{vprintf} o un \emph{wrapper} di logging che inoltra la format string ricevuta. È una scelta deliberata di GCC, per non generare falsi allarmi su un pattern altrimenti legittimo~\cite{gccwopts}.
 
-Queste due protezioni intervengono quindi prima che il binario venga prodotto per cercare di prevenire l'introduzione della vulnerabilità, a differenza di \texttt{\_FORTIFY\_SOURCE} che interviene a runtime. Rimangono però sempre avvisi che non impediscono la produzione del binario. Una soluzione è aggiungere anche l'opzione \texttt{-Werror} che tratta gli avvisi come errori~\cite{gccwopts}, impedendo quindi la compilazione del binario.
+Questi due controlli intervengono quindi prima che il binario venga prodotto per cercare di prevenire l'introduzione della vulnerabilità. Rimangono però sempre avvisi che non impediscono la produzione del binario. Una soluzione è aggiungere anche l'opzione \texttt{-Werror} che tratta gli avvisi come errori~\cite{gccwopts}, impedendo quindi la compilazione del binario.
+ 
+I due livelli di protezione agiscono quindi in momenti diversi. Quello a runtime interviene anche quando il pattern vulnerabile è già presente, bloccando la scrittura ma non sempre il leak (Sezione~\ref{sec:fortify_verify}). Quello sul codice sorgente, visto in questa sezione, punta invece a evitare che tale pattern venga scritto, potendo arrivare a impedire la produzione stessa del binario.
