@@ -107,7 +107,7 @@ La protezione \texttt{\_FORTIFY\_SOURCE} riesce quindi a bloccare tutti i tentat
 
 
 \section{Prevenzione in fase di compilazione: i controlli statici sulla format string}\label{sec:prevention}
-La soluzione più efficace contro questa classe di vulnerabilità resta alla radice: il pattern sicuro già visto in Sottosezione~\ref{subsec:right_fmt}, una format string letterale. Il linguaggio C, però, non impone questo utilizzo, quindi serve un modo per accorgersi di una format string vulnerabile prima ancora che il programma venga eseguito.
+La soluzione più efficace contro questa vulnerabilità resta alla radice: il pattern sicuro già visto in Sottosezione~\ref{subsec:right_fmt}, una format string letterale. Il linguaggio C, però, non impone questo utilizzo, quindi serve un modo per accorgersi di una format string vulnerabile prima ancora che il programma venga eseguito.
  
 Come già visto in Sottosezione~\ref{subsec:wrong_fmt}, una format string non letterale fa scattare di default l'avviso \texttt{-Wformat-security}: un controllo che GCC applica solo se \texttt{-Wformat} (Sottosezione~\ref{subsec:right_fmt}) è attiva~\cite{gccwopts}, come lo è di default nel nostro ambiente di riferimento. Lo vediamo sullo stesso \texttt{printf(buf)} del Codice~\ref{lst:leak_demo_c} (Codice~\ref{lst:fmt_security}).
 \begin{lstlisting}[

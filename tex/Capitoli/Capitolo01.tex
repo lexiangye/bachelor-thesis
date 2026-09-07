@@ -101,6 +101,7 @@ Per il nostro scopo sono rilevanti:
 \end{itemize}
 A differenza degli altri due, che si limitano a stampare un valore, \texttt{n} scrive in memoria. Poter osservare la memoria di un programma è già un rischio; poterla alterare lo è ancora di più. È proprio questa capacità di scrittura, insieme ai meccanismi discussi nella prossima sezione, a rendere la vulnerabilità format string particolarmente pericolosa, come mostrato a partire dal Capitolo~\ref{chapter:fmt_vuln}.
 
+
 \section{La calling convention x86-64}\label{sec:callconv}
 Analizziamo la vulnerabilità format string in particolare per l'architettura x86-64, nota anche come AMD64. Ci interessano le convenzioni utilizzate da tale architettura durante la chiamata di funzione, in particolare dove vengono memorizzati gli argomenti passati alla funzione (ci servirà quando andremo a sfruttare la vulnerabilità).
 

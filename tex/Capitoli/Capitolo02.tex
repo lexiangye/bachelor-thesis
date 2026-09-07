@@ -405,4 +405,4 @@ Al termine, \texttt{global\_secret} vale \texttt{0x00000000deadbeef}: le due scr
 È possibile fare scritture parziali anche con \texttt{\%hhn}. La dimensione di queste scritture è ancora minore, ovvero di 1 byte ciascuno, ma il procedimento è lo stesso di quello visto per \texttt{\%hn}.
 
 Le tecniche di lettura e scrittura sono state finora mostrate separatamente, e la scrittura si è appoggiata a un indirizzo reso fisso disattivando la protezione PIE. 
-Il Capitolo~\ref{chapter:exploit} le combina in un unico \emph{exploit}, contro un nuovo programma dove PIE resta attivo: la lettura ricava a runtime l'indirizzo che PIE avrebbe altrimenti randomizzato, e la scrittura lo sfrutta per completare l'attacco.
+Il Capitolo~\ref{chapter:exploit} le combina in un unico exploit, contro un nuovo programma dove PIE resta attivo: la lettura ricava a runtime l'indirizzo che PIE avrebbe altrimenti randomizzato, e la scrittura lo sfrutta per completare l'exploit.
