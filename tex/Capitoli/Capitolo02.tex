@@ -55,7 +55,7 @@ Di conseguenza, un attaccante può rompere facilmente la regola secondo cui ogni
         return 0;
     }
 \end{lstlisting}
-Come detto nella Sezione~\ref{sec:callconv}, se uno specificatore non corrisponde a nessun argomento passato alla \texttt{printf}, esso va ad agire su dati residui presenti sui registri o sullo stack, in base ai valori correnti degli offset di \texttt{va\_list}.
+Come detto nella Sottosezione~\ref{subsec:funvar_cc}, se uno specificatore non corrisponde a nessun argomento passato alla \texttt{printf}, esso va ad agire su dati residui presenti sui registri o sullo stack, in base ai valori correnti degli offset di \texttt{va\_list}.
 Questo permette all'attaccante di causare leak di informazioni o addirittura di eseguire scritture in memoria.
 
 Nell'ambiente di riferimento (Tabella~\ref{tab:ambiente_riferimento}), una \texttt{printf} come quella appena mostrata (Codice~\ref{lst:wrong_fmt}) --- con format string non letterale e senza altri argomenti --- fa scattare di default l'avviso \texttt{-Wformat-security}. Basta però un solo argomento in più, anche innocuo, affinché l'avviso scompaia. La format string resta comunque vulnerabile~\cite{gccwopts}.
@@ -164,7 +164,7 @@ Lo stack pointer non viene più modificato prima della chiamata a \texttt{printf
     
 \end{figure}
 
-La format string occupa da sola il primo registro disponibile, \texttt{\%rdi}; restano quindi cinque registri \emph{general-purpose} (\texttt{\%rsi}, \texttt{\%rdx}, \texttt{\%rcx}, \texttt{\%r8}, \texttt{\%r9}) che la format string non ha richiesto esplicitamente, ma che \texttt{va\_arg} considera comunque disponibili: sono gli ``argomenti fantasma'' introdotti nella Sezione~\ref{sec:callconv}. I primi cinque specificatori di formato leggono dunque, uno per uno, il contenuto residuo di questi cinque registri.
+La format string occupa da sola il primo registro disponibile, \texttt{\%rdi}; restano quindi cinque registri \emph{general-purpose} (\texttt{\%rsi}, \texttt{\%rdx}, \texttt{\%rcx}, \texttt{\%r8}, \texttt{\%r9}) che la format string non ha richiesto esplicitamente, ma che \texttt{va\_arg} considera comunque disponibili: sono gli ``argomenti fantasma'' introdotti nella Sottosezione~\ref{subsec:funvar_cc}. I primi cinque specificatori di formato leggono dunque, uno per uno, il contenuto residuo di questi cinque registri.
 
 Esauriti i registri, il sesto specificatore legge il primo argomento dallo stack, puntato da \texttt{overflow\_arg\_area} a partire dall'\texttt{rsp} di \texttt{main} al momento della chiamata --- lo stesso \texttt{rsp} da cui abbiamo appena misurato la posizione di \texttt{local\_secret}. Il settimo specificatore legge quindi la seconda qword a partire da \texttt{rsp}, che è esattamente dove si trova \texttt{local\_secret}.
 
