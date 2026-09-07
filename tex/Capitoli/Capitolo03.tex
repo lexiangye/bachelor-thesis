@@ -427,7 +427,7 @@ Questo succede perché il prologo di \texttt{debug\_shell} si aspetta di essere 
     ; ...
 \end{lstlisting}
 
-La correzione è saltare i primi 5 byte di \texttt{debug\_shell}, cioè \texttt{endbr64} e \texttt{push rbp} (causa del disallineamento): il valore da scrivere diventa \texttt{debug\_shell\_addr + 5}. In questo modo nel momento della chiamata a \texttt{system()}, \texttt{rsp} è allineato a 16 byte, evitando così il \texttt{SIGSEGV}.
+La correzione è saltare i primi 5 byte di \texttt{debug\_shell}, cioè \texttt{endbr64} e \texttt{push rbp} (causa del disallineamento). Il valore da scrivere diventa quindi \texttt{debug\_shell\_addr + 5}. In questo modo nel momento della chiamata a \texttt{system()}, \texttt{rsp} è allineato a 16 byte, evitando così il \texttt{SIGSEGV}.
 
 \texttt{debug\_shell\_addr + 5}, offset \texttt{0x11ce}, cade comunque nella stessa pagina di \texttt{0x11c9} e \texttt{0x123f}. Il ragionamento visto sopra per la scrittura da 2 byte resta perciò valido senza modifiche: cambia solo il valore effettivamente scritto.
 
