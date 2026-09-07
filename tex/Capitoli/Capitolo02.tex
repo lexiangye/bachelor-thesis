@@ -62,7 +62,7 @@ Nell'ambiente di riferimento (Tabella~\ref{tab:ambiente_riferimento}), una \text
 
 
 \section{Information disclosure: individuare e leggere un valore con \%x}\label{sec:info_disclosure}
-Prendiamo il codice vulnerabile appena mostrato (Codice~\ref{lst:wrong_fmt}) e aggiungiamo una variabile locale \texttt{local\_secret} che viene allocata nello \emph{stack frame} della funzione \texttt{main} (Codice~\ref{lst:leak_demo_c}).
+Prendiamo il codice vulnerabile appena mostrato (Codice~\ref{lst:wrong_fmt}) e aggiungiamo una variabile locale \texttt{local\_secret} che viene allocata nello stack frame della funzione \texttt{main} (Codice~\ref{lst:leak_demo_c}).
 Mostriamo, tramite lo sfruttamento della vulnerabilità format string, come è possibile vederne il contenuto senza che questo venga passato esplicitamente a \texttt{printf} --- operazione altrimenti non fattibile.
 \begin{lstlisting}[
     language=C,
@@ -164,7 +164,7 @@ Lo stack pointer non viene più modificato prima della chiamata a \texttt{printf
     
 \end{figure}
 
-La format string occupa da sola il primo registro disponibile, \texttt{\%rdi}; restano quindi cinque registri \emph{general-purpose} (\texttt{\%rsi}, \texttt{\%rdx}, \texttt{\%rcx}, \texttt{\%r8}, \texttt{\%r9}) che la format string non ha richiesto esplicitamente, ma che \texttt{va\_arg} considera comunque disponibili: sono gli ``argomenti fantasma'' introdotti nella Sottosezione~\ref{subsec:funvar_cc}. I primi cinque specificatori di formato leggono dunque, uno per uno, il contenuto residuo di questi cinque registri.
+La format string occupa da sola il primo registro disponibile, \texttt{\%rdi}; restano quindi cinque registri general-purpose (\texttt{\%rsi}, \texttt{\%rdx}, \texttt{\%rcx}, \texttt{\%r8}, \texttt{\%r9}) che la format string non ha richiesto esplicitamente, ma che \texttt{va\_arg} considera comunque disponibili: sono gli ``argomenti fantasma'' introdotti nella Sottosezione~\ref{subsec:funvar_cc}. I primi cinque specificatori di formato leggono dunque, uno per uno, il contenuto residuo di questi cinque registri.
 
 Esauriti i registri, il sesto specificatore legge il primo argomento dallo stack, puntato da \texttt{overflow\_arg\_area} a partire dall'\texttt{rsp} di \texttt{main} al momento della chiamata --- lo stesso \texttt{rsp} da cui abbiamo appena misurato la posizione di \texttt{local\_secret}. Il settimo specificatore legge quindi la seconda qword a partire da \texttt{rsp}, che è esattamente dove si trova \texttt{local\_secret}.
 
@@ -191,10 +191,10 @@ Abbiamo due modi per arrivare a \texttt{local\_secret} (Codice~\ref{lst:leak_int
 
 La sequenza di specificatori \texttt{\%lx} consuma, uno per uno, gli slot disponibili --- i cinque registri, poi lo stack --- fino a raggiungere \texttt{local\_secret} al settimo, stampato come \texttt{1337}.
 
-Lo specificatore \texttt{\%7\$lx}, usato da solo, referenzia direttamente la settima posizione senza che le prime sei compaiano esplicitamente nella format string: è esattamente il caso dei ``buchi'' descritto nella Sezione~\ref{sec:funcvar_format}, che la specifica richiede di evitare~\cite{man3printf}. Il meccanismo che risolve la posizione richiesta si comporta però come se, per ciascuna delle sei posizioni non referenziate, fosse stato comunque letto un valore con \texttt{\%lx}. Non è un caso che i due metodi diano lo stesso risultato: entrambi consumano, nello stesso ordine, la stessa sequenza di slot general-purpose (i cinque registri, poi lo stack) prima di raggiungere il settimo.\footnote{Se una delle posizioni saltate corrispondesse invece a un valore \emph{floating-point}, questa equivalenza implicita non varrebbe più: il conteggio dei registri general-purpose avanzerebbe comunque, ma quello dei registri vettoriali no, disallineando i due contatori (verificato empiricamente).}
+Lo specificatore \texttt{\%7\$lx}, usato da solo, referenzia direttamente la settima posizione senza che le prime sei compaiano esplicitamente nella format string: è esattamente il caso dei ``buchi'' descritto nella Sezione~\ref{sec:funcvar_format}, che la specifica richiede di evitare~\cite{man3printf}. Il meccanismo che risolve la posizione richiesta si comporta però come se, per ciascuna delle sei posizioni non referenziate, fosse stato comunque letto un valore con \texttt{\%lx}. Non è un caso che i due metodi diano lo stesso risultato: entrambi consumano, nello stesso ordine, la stessa sequenza di slot general-purpose (i cinque registri, poi lo stack) prima di raggiungere il settimo.\footnote{Se una delle posizioni saltate corrispondesse invece a un valore floating-point, questa equivalenza implicita non varrebbe più: il conteggio dei registri general-purpose avanzerebbe comunque, ma quello dei registri vettoriali no, disallineando i due contatori (verificato empiricamente).}
 Sfrutteremo questo comportamento anche nelle prossime sezioni per costruire payload compatti, lasciando implicite le posizioni intermedie non referenziate senza più richiamare il meccanismo ogni volta.
 
-Il principio appena dimostrato non dipende dallo specifico specificatore \texttt{\%lx}: qualunque conversione di classe \emph{INTEGER} che non dereferenzi l'argomento (come \texttt{\%x} e \texttt{\%p}) leggerebbe lo stesso registro o la stessa posizione di stack, cambiando solo il modo in cui il valore viene stampato. Lo stesso disallineamento tra specificatori dichiarati e argomenti realmente forniti che abbiamo sfruttato per leggere permette, come vedremo nella Sezione~\ref{sec:mem_write}, anche di scrivere in memoria.
+Il principio appena dimostrato non dipende dallo specifico specificatore \texttt{\%lx}: qualunque conversione di classe INTEGER che non dereferenzi l'argomento (come \texttt{\%x} e \texttt{\%p}) leggerebbe lo stesso registro o la stessa posizione di stack, cambiando solo il modo in cui il valore viene stampato. Lo stesso disallineamento tra specificatori dichiarati e argomenti realmente forniti che abbiamo sfruttato per leggere permette, come vedremo nella Sezione~\ref{sec:mem_write}, anche di scrivere in memoria.
 
 
 \section{Scrittura in memoria con \%n: il problema della dimensione}\label{sec:mem_write}
