@@ -191,8 +191,8 @@ Abbiamo due modi per arrivare a \texttt{local\_secret} (Codice~\ref{lst:leak_int
 
 La sequenza di specificatori \texttt{\%lx} consuma, uno per uno, gli slot disponibili --- i cinque registri, poi lo stack --- fino a raggiungere \texttt{local\_secret} al settimo, stampato come \texttt{1337}.
 
-Lo specificatore \texttt{\%7\$lx}, usato da solo, referenzia direttamente la settima posizione senza che le prime sei compaiano esplicitamente nella format string: è esattamente il caso dei ``buchi'' descritto nella Sezione~\ref{sec:funcvar_format}, che la specifica richiede di evitare~\cite{man3printf}. Il meccanismo che risolve la posizione richiesta si comporta però come se, per ciascuna delle sei posizioni non referenziate, fosse stato comunque letto un valore con \texttt{\%lx}. Non è un caso che i due metodi diano lo stesso risultato: entrambi consumano, nello stesso ordine, la stessa sequenza di slot general-purpose (i cinque registri, poi lo stack) prima di raggiungere il settimo.\footnote{Se una delle posizioni saltate corrispondesse invece a un valore floating-point, questa equivalenza implicita non varrebbe più: il conteggio dei registri general-purpose avanzerebbe comunque, ma quello dei registri vettoriali no, disallineando i due contatori (verificato empiricamente).}
-Sfrutteremo questo comportamento anche nelle prossime sezioni per costruire payload compatti, lasciando implicite le posizioni intermedie non referenziate senza più richiamare il meccanismo ogni volta.
+Lo specificatore \texttt{\%7\$lx}, usato da solo, referenzia direttamente la settima posizione senza che le prime sei compaiano esplicitamente nella format string: è esattamente il caso dei ``buchi'' descritto nella Sezione~\ref{sec:funcvar_format}, che la specifica richiede di evitare~\cite{man3printf}. Il meccanismo che risolve la posizione richiesta si comporta però come se, per ciascuna delle sei posizioni non referenziate, fosse stato comunque letto un valore con \texttt{\%lx}. Non è un caso che i due metodi diano lo stesso risultato: entrambi consumano, nello stesso ordine, la stessa sequenza di slot general-purpose (i cinque registri, poi lo stack) prima di raggiungere il settimo.\footnote{Se una delle posizioni saltate corrispondesse invece a un argomento floating-point, questa equivalenza non varrebbe più: il conteggio dei registri general-purpose avanzerebbe, ma non quello dei registri vettoriali (verificato empiricamente).}
+Sfrutteremo questo comportamento anche nelle Sezioni~\ref{sec:mem_write} e~\ref{sec:partial_write} per costruire payload compatti, lasciando implicite le posizioni intermedie non referenziate senza più richiamare il meccanismo ogni volta.
 
 Il principio appena dimostrato non dipende dallo specifico specificatore \texttt{\%lx}: qualunque conversione di classe INTEGER che non dereferenzi l'argomento (come \texttt{\%x} e \texttt{\%p}) leggerebbe lo stesso registro o la stessa posizione di stack, cambiando solo il modo in cui il valore viene stampato. Lo stesso disallineamento tra specificatori dichiarati e argomenti realmente forniti che abbiamo sfruttato per leggere permette, come vedremo nella Sezione~\ref{sec:mem_write}, anche di scrivere in memoria.
 
@@ -241,7 +241,7 @@ Senza tale protezione, l'indirizzo di \texttt{global\_secret} è fisso ed è pos
 ]
     ; ...
 
-    mov    rax,QWORD PTR [rip+0x2e83]  # 404050 <global_secret>
+    mov    rax,QWORD PTR [rip+0x2e83]# 404050 <global_secret>
     mov    rsi,rax
     mov    edi,0x402004
     mov    eax,0x0
@@ -405,4 +405,4 @@ Al termine, \texttt{global\_secret} vale \texttt{0x00000000deadbeef}: le due scr
 È possibile fare scritture parziali anche con \texttt{\%hhn}. La dimensione di queste scritture è ancora minore, ovvero di 1 byte ciascuno, ma il procedimento è lo stesso di quello visto per \texttt{\%hn}.
 
 Le tecniche di lettura e scrittura sono state finora mostrate separatamente, e la scrittura si è appoggiata a un indirizzo reso fisso disattivando la protezione PIE. 
-Il Capitolo~\ref{chapter:exploit} le combina in un unico exploit, contro un nuovo programma dove PIE resta attivo: la lettura ricava a runtime l'indirizzo che PIE avrebbe altrimenti randomizzato, e la scrittura lo sfrutta per completare l'exploit.
+Il Capitolo~\ref{chapter:exploit} le combina in un unico exploit, contro un nuovo programma dove PIE resta attivo.

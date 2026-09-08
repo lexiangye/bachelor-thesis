@@ -335,7 +335,7 @@ La posizione del return address rispetto a \texttt{buf} è già nota (Figura~\re
 A questo punto sono noti sia l'indirizzo di \texttt{debug\_shell} a cui ritornare (\texttt{debug\_shell\_addr}) sia la posizione in cui scriverlo (\texttt{ret\_pos\_addr}): resta da vedere come eseguire concretamente la scrittura tramite \texttt{\%n}.
 
 
-\section{Fase di write: dagli indirizzi alla scrittura arbitraria}\label{sec:write_phase}
+\section{Fase di scrittura: dagli indirizzi alla scrittura arbitraria}\label{sec:write_phase}
 Rispetto alle scritture delle Sezioni~\ref{sec:mem_write} e~\ref{sec:partial_write}, cambia la natura del valore da scrivere: non è noto a priori, ma viene calcolato a runtime dallo script dopo il leak di un indirizzo dell'eseguibile (Codice~\ref{lst:debug_shell_address}). Quindi anche il calcolo del payload, padding compreso, spetta allo script.
 
 Poiché tale valore, in decimale, è enorme, non è possibile scriverlo con un'unica \texttt{\%ln}: come nella Sezione~\ref{sec:partial_write}, servirebbero più scritture parziali tramite \texttt{\%hn}, il cui numero e la cui posizione lo script dovrebbe stavolta calcolare a runtime anziché derivarli a mano.
