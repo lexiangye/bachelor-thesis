@@ -17,9 +17,9 @@ Una delle funzioni variadiche più note è \texttt{printf}, dichiarata nell'\emp
 ]
     int printf(const char *fmt, ...);
 \end{lstlisting}
-L'ellissi \texttt{...} indica che il numero e il tipo di questi argomenti possono variare e che quindi si tratta di una funzione variadica. Questa ellissi può comparire solo alla fine di un elenco di argomenti.
+L'ellissi \texttt{...} indica che il numero e il tipo di questi argomenti possono variare e che quindi si tratta di una funzione variadica. Questa ellissi può comparire solo alla fine di un elenco di argomenti~\cite{kr1988}.
 
-Per le funzioni variadiche, il numero e il tipo degli argomenti che seguono l'ultimo parametro dichiarato non sono determinabili dalla sola dichiarazione della funzione. È quindi compito del programmatore definire una convenzione che il chiamante rispetti, per comunicare in qualche altro modo quanti argomenti sono stati passati. È possibile:
+Per le funzioni variadiche, il numero e il tipo degli argomenti che seguono l'ultimo parametro dichiarato non sono determinabili dalla sola dichiarazione della funzione. È quindi compito del programmatore definire una convenzione che il chiamante rispetti, per comunicare in qualche altro modo quanti argomenti sono stati passati~\cite{kr1988}. È possibile:
 \begin{itemize}
     \item utilizzare una format string che indichi il numero e il tipo dei parametri (ad es. la format string di \texttt{printf});
     \item passare il numero come argomento fisso;
@@ -61,7 +61,7 @@ Per inquadrare il funzionamento della format string e il modo in cui le funzioni
 \end{lstlisting}
 
 Per gestire gli argomenti aggiuntivi, il linguaggio C ci fornisce l'header standard \texttt{<stdarg.h>}, contenente un insieme di definizioni di macro che stabiliscono come avanzare all'interno di una lista di argomenti.
-Il tipo \texttt{va\_list} viene utilizzato per dichiarare una variabile che fa riferimento, uno dopo l'altro, a ciascuno degli argomenti aggiuntivi anonimi; in \texttt{minprintf}, questa variabile è chiamata \texttt{ap}, che sta per ``argument pointer''. La macro \texttt{va\_start} inizializza \texttt{ap} facendolo puntare al primo argomento senza nome. Questa macro deve essere invocata una volta prima di poter utilizzare \texttt{ap}. È necessaria la presenza di almeno un argomento con nome; l'ultimo di questi argomenti viene utilizzato da \texttt{va\_start} come punto di partenza.
+Il tipo \texttt{va\_list} viene utilizzato per dichiarare una variabile che fa riferimento, uno dopo l'altro, a ciascuno degli argomenti aggiuntivi anonimi; in \texttt{minprintf}, questa variabile è chiamata \texttt{ap}, che sta per ``argument pointer''. La macro \texttt{va\_start} inizializza \texttt{ap} facendolo puntare al primo argomento senza nome. Questa macro deve essere invocata una volta prima di poter utilizzare \texttt{ap}. È necessaria la presenza di almeno un argomento con nome; l'ultimo di questi argomenti viene utilizzato da \texttt{va\_start} come punto di partenza~\cite{kr1988}.
 
 Ogni chiamata a \texttt{va\_arg} restituisce un argomento e fa avanzare \texttt{ap} a quello successivo; \texttt{va\_arg} utilizza il nome del tipo per determinare quale tipo di dato restituire e l'entità del passo da compiere per avanzare. Infine, \texttt{va\_end} si occupa di eseguire le eventuali operazioni di pulizia necessarie. Deve essere chiamata prima che la funzione termini~\cite{kr1988}.
 
@@ -84,22 +84,22 @@ Il principio di \texttt{printf} della libreria standard è identico; l'aspetto c
 Per il nostro scopo sono rilevanti:
 \begin{itemize}
     \item \emph{posizione} (\texttt{n\$}), permette di indicare esplicitamente quale argomento della lista debba essere formattato, anziché consumare implicitamente il successivo non ancora utilizzato (ad es. \texttt{\%3\$x} formatta come esadecimale il terzo argomento dopo \texttt{fmt}). Non fa parte dello standard C, ma è un'estensione POSIX; la sua disponibilità dipende quindi dalla libreria C effettivamente linkata, non dal linguaggio in sé. Se si adotta questo stile, la specifica richiede inoltre che ogni posizione fino alla più alta usata compaia almeno una volta nella format string, senza ``buchi''~\cite{man3printf}.
-    \item \emph{larghezza}, il numero minimo di caratteri da stampare. Se il valore da stampare è più corto di questo numero, il risultato viene riempito con spazi vuoti. Il valore non viene troncato, nemmeno se risulta più lungo.
-    \item \emph{lunghezza}, modifica la dimensione del tipo di dato. Noi useremo:
+    \item \emph{larghezza}, il numero minimo di caratteri da stampare. Se il valore da stampare è più corto di questo numero, il risultato viene riempito con spazi vuoti. Il valore non viene troncato, nemmeno se risulta più lungo~\cite{man3printf}.
+    \item \emph{lunghezza}, modifica la dimensione del tipo di dato~\cite{man3printf}. Noi useremo:
         \begin{itemize}
             \item \texttt{hh} che per definizione è esattamente 1 byte di dimensione
             \item \texttt{h} che è praticamente sempre 2 byte di dimensione
             \item \texttt{l} che, sull'ambiente di riferimento di questa tesi (Tabella~\ref{tab:ambiente_riferimento}), è 8 byte di dimensione
         \end{itemize}
 
-    \item \emph{conversione}, definisce il tipo e l'interpretazione del relativo argomento. Ci interessano:
+    \item \emph{conversione}, definisce il tipo e l'interpretazione del relativo argomento~\cite{man3printf}. Ci interessano:
         \begin{itemize}
             \item \texttt{x}, stampa l'argomento intero esadecimale senza segno
             \item \texttt{p}, stampa l'argomento come indirizzo di memoria (puntatore)
             \item \texttt{n}, non viene stampato nulla, però il numero di caratteri scritti fino a quel momento viene memorizzato nella locazione di memoria puntata dall'argomento corrispondente
         \end{itemize}
 \end{itemize}
-A differenza degli altri due, che si limitano a stampare un valore, \texttt{n} scrive in memoria. Poter osservare la memoria di un programma è già un rischio; poterla alterare lo è ancora di più. È proprio questa capacità di scrittura, insieme ai meccanismi discussi nella prossima sezione, a rendere la vulnerabilità format string particolarmente pericolosa, come mostrato a partire dal Capitolo~\ref{chapter:fmt_vuln}.
+A differenza degli altri due, che si limitano a stampare un valore, \texttt{n} scrive in memoria. Poter osservare la memoria di un programma è già un rischio; poterla alterare lo è ancora di più. È proprio questa capacità di scrittura, insieme ai meccanismi discussi nella Sezione~\ref{sec:callconv}, a rendere la vulnerabilità format string particolarmente pericolosa, come mostrato a partire dal Capitolo~\ref{chapter:fmt_vuln}.
 
 
 \section{La calling convention x86-64}\label{sec:callconv}
@@ -110,9 +110,9 @@ Analizziamo la vulnerabilità format string in particolare per l'architettura x8
 Un'\textbf{ABI} (\emph{Application Binary Interface}) definisce in che modo i diversi componenti di un codice binario possano interfacciarsi su un determinato sistema operativo e una determinata architettura~\cite{silberschatz2019}.
 \end{defn}
 
-Tra i molti dettagli di basso livello specificati da un'ABI, quello che riguarda più da vicino la vulnerabilità trattata in questa tesi è la \emph{calling convention}, ovvero l'insieme di regole con cui il chiamante dispone gli argomenti di una funzione affinché il chiamato possa recuperarli correttamente. Per la piattaforma di riferimento (Linux, x86-64), queste regole sono specificate dalla System V AMD64 ABI, che decide la collocazione di ciascun argomento --- in un registro o sullo stack --- sulla base di una classificazione.
+Tra i molti dettagli di basso livello specificati da un'ABI, quello che riguarda più da vicino la vulnerabilità trattata in questa tesi è la \emph{calling convention}, ovvero l'insieme di regole con cui il chiamante dispone gli argomenti di una funzione affinché il chiamato possa recuperarli correttamente. Per la piattaforma di riferimento (Linux, x86-64), queste regole sono specificate dalla System V AMD64 ABI, che decide la collocazione di ciascun argomento --- in un registro o sullo stack --- sulla base di una classificazione~\cite{psabi2025}.
 
-Gli argomenti delle funzioni vengono suddivisi in diverse categorie, mappate sulle specifiche famiglie di registri dell'architettura AMD64. Quelli rilevanti ai fini della trattazione della nostra vulnerabilità appartengono alla classe \emph{INTEGER}, costituita dai tipi interi che possono essere contenuti all'interno di uno dei registri \emph{general-purpose} (registri di uso generale).
+Gli argomenti delle funzioni vengono suddivisi in diverse categorie, mappate sulle specifiche famiglie di registri dell'architettura AMD64. Quelli rilevanti ai fini della trattazione della nostra vulnerabilità appartengono alla classe \emph{INTEGER}, costituita dai tipi interi che possono essere contenuti all'interno di uno dei registri \emph{general-purpose} (registri di uso generale)~\cite{psabi2025}.
 
 I tipi base (con segno e senza segno) appartenenti alla classe INTEGER sono: \texttt{\_Bool}, \texttt{char}, \texttt{short}, \texttt{int}, \texttt{long}, \texttt{long long} e puntatori.
 La dimensione di ciascun argomento viene arrotondata per eccesso a 8 byte. Di conseguenza, lo stack risulta sempre allineato a 8 byte~\cite{psabi2025}.
@@ -207,7 +207,7 @@ Esaminiamo le componenti di \texttt{va\_list}~\cite{psabi2025}:
     \item \texttt{overflow\_arg\_area}: puntatore nello stack che punta al primo argomento passato lì (se esiste) e avanza a ogni lettura successiva. È dove \texttt{va\_arg} finisce per leggere una volta che \texttt{gp\_offset} o \texttt{fp\_offset} hanno raggiunto il loro valore massimo.
 \end{itemize}
 
-Come accennato in precedenza, la macro \texttt{va\_arg} ci permette di estrarre gli argomenti aggiuntivi di una funzione variadica correttamente.
+Come accennato nella Sezione~\ref{sec:funcvar_format}, la macro \texttt{va\_arg} ci permette di estrarre gli argomenti aggiuntivi di una funzione variadica correttamente.
 A ogni chiamata di \texttt{va\_arg(ap, type)} (\texttt{ap} è di tipo \texttt{va\_list}), si controlla se \texttt{type} è idoneo a essere passato tramite registri (altrimenti viene estratto dallo stack).
 Una volta accertata l'idoneità, viene verificata la disponibilità dei registri necessari a contenere \texttt{type}:
 \begin{itemize}
